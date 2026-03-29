@@ -1106,6 +1106,10 @@ void DSF_AccumPolygonWithHoles(
 // -1 = cull
 static int	DSF_HeightRangeRecursive(WED_Thing * what, double& out_msl_min, double& out_msl_max, const Bbox2& bounds)
 {
+	WED_Entity * entity = dynamic_cast<WED_Entity *>(what);
+	if(entity && entity->GetNoExport())
+		return 0;
+
 	IGISEntity * ent;
 	if((ent = dynamic_cast<IGISEntity *>(what)) != NULL)
 	{
@@ -1677,7 +1681,7 @@ static int	DSF_ExportTileRecursive(
 						double ter_msl = 0;
 						fst->GetBounds(gis_Geo, bnds);
 						vector<WED_TerPlacement*> ters;
-						CollectRecursive(WED_GetWorld(resolver), back_inserter(ters), EntityExportable, TakeAlways, WED_TerPlacement::sClass);
+						CollectRecursive(WED_GetWorld(resolver), back_inserter(ters), ThingExportable, TakeAlways, WED_TerPlacement::sClass);
 
 						const dem_info_t* dem_info = nullptr;
 						for(auto t : ters)
