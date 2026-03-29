@@ -117,6 +117,7 @@ enum {
 //	wed_UnitMeters,
 	wed_ToggleLines,
 	wed_ToggleVertices,
+	wed_ToggleRampLabels,
 	wed_PickOverlay,
 //	wed_ToggleOverlay,
 	wed_ToggleWorldMap,

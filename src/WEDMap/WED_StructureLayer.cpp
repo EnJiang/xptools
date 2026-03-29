@@ -85,6 +85,7 @@ WED_StructureLayer::WED_StructureLayer(GUI_Pane * h, WED_MapZoomerNew * zoomer, 
 {
 	mRealLines = true;
 	mVertices = true;
+	mRampLabels = false;
 //	mPavementAlpha = 0.5;
 }
 
@@ -385,6 +386,16 @@ bool		WED_StructureLayer::DrawEntityStructure		(bool inCurrent, IGISEntity * ent
 
 					GUI_PlotIcon(g,icon, l.x(),l.y(),pth->GetHeading(),GetFurnitureIconScale());
 					g->SetTexUnits(0);
+
+					if (ramp && mRampLabels)
+					{
+						string ramp_name;
+						ramp->GetName(ramp_name);
+						if (!ramp_name.empty())
+						{
+							GUI_FontDraw(g, font_UI_Small, colorf, l.x() + 8.0, l.y() + 10.0, ramp_name.c_str(), align_Left);
+						}
+					}
 				}
 				else // if(!selected)         	// selection layer will draw a big cross with handles over it, anyways. Does not save anything measureable.
 				{
@@ -845,6 +856,17 @@ bool		WED_StructureLayer::GetVerticesShowing(void) const
 void		WED_StructureLayer::SetVerticesShowing(bool show)
 {
 	mVertices = show;
+	GetHost()->Refresh();
+}
+
+bool		WED_StructureLayer::GetRampLabelsShowing(void) const
+{
+	return mRampLabels;
+}
+
+void		WED_StructureLayer::SetRampLabelsShowing(bool show)
+{
+	mRampLabels = show;
 	GetHost()->Refresh();
 }
 

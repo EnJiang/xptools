@@ -14,6 +14,8 @@ public:
 			void		SetRealLinesShowing(bool show);
 			bool		GetVerticesShowing(void) const;
 			void		SetVerticesShowing(bool show);
+			bool		GetRampLabelsShowing(void) const;
+			void		SetRampLabelsShowing(bool show);
 
 	virtual	bool		DrawEntityStructure		(bool inCurrent, IGISEntity * entity, GUI_GraphState * g, bool selected, bool locked);
 	virtual	bool		DrawEntityVisualization	(bool inCurrent, IGISEntity * entity, GUI_GraphState * g, int selected);
@@ -24,6 +26,7 @@ private:
 
 	bool				mRealLines;
 	bool				mVertices;
+	bool				mRampLabels;
 
 	vector<short>		mAirportIconsXY;
 	vector<unsigned>	mAirportIconsC;

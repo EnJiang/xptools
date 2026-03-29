@@ -444,6 +444,7 @@ int		WED_MapPane::Map_HandleCommand(int command)
 
 	case wed_ToggleLines:	mStructureLayer->SetRealLinesShowing(!mStructureLayer->GetRealLinesShowing());				return 1;
 	case wed_ToggleVertices:mStructureLayer->SetVerticesShowing(!mStructureLayer->GetVerticesShowing());				return 1;
+	case wed_ToggleRampLabels:mStructureLayer->SetRampLabelsShowing(!mStructureLayer->GetRampLabelsShowing());		return 1;
 
 	case wed_ZoomWorld:		mMap->ZoomShowArea(-180,-90,180,90);	mMap->Refresh(); return 1;
 	case wed_ZoomAll:		GetExtentAll(box, mResolver); mMap->ZoomShowArea(box.p1.x(),box.p1.y(),box.p2.x(),box.p2.y());	mMap->Refresh(); return 1;
@@ -486,6 +487,7 @@ int		WED_MapPane::Map_CanHandleCommand(int command, string& ioName, int& ioCheck
 
 	case wed_ToggleLines:	ioCheck = mStructureLayer->GetRealLinesShowing();		return 1;
 	case wed_ToggleVertices:ioCheck = mStructureLayer->GetVerticesShowing();		return 1;
+	case wed_ToggleRampLabels:ioCheck = mStructureLayer->GetRampLabelsShowing();	return 1;
 
 	case wed_ZoomWorld:		return 1;
 	case wed_ZoomAll:		GetExtentAll(box, mResolver); return !box.is_empty()  && !box.is_null();
@@ -529,6 +531,7 @@ void			WED_MapPane::FromPrefs(IDocPrefs * prefs)
 
 	mStructureLayer->SetRealLinesShowing(	 prefs->ReadIntPref("map/real_lines_vis",mStructureLayer->GetRealLinesShowing() ? 1 : 0) != 0);
 	mStructureLayer->SetVerticesShowing(	 prefs->ReadIntPref("map/vertices_vis",	 mStructureLayer->GetVerticesShowing() ? 1 : 0) != 0);
+	mStructureLayer->SetRampLabelsShowing(	 prefs->ReadIntPref("map/ramp_labels_vis",mStructureLayer->GetRampLabelsShowing() ? 1 : 0) != 0);
 
 	double w,s,e,n;
 	mMap->GetMapVisibleBounds(w,s,e,n);
@@ -601,6 +604,7 @@ void			WED_MapPane::ToPrefs(IDocPrefs * prefs)
 	//prefs->WriteIntPref("map/atc_vis", mATCLayer->IsVisible() ? 1 : 0);
 	prefs->WriteIntPref("map/real_lines_vis",mStructureLayer->GetRealLinesShowing() ? 1 : 0);
 	prefs->WriteIntPref("map/vertices_vis",mStructureLayer->GetVerticesShowing() ? 1 : 0);
+	prefs->WriteIntPref("map/ramp_labels_vis",mStructureLayer->GetRampLabelsShowing() ? 1 : 0);
 
 	double w,s,e,n;
 	mMap->GetMapVisibleBounds(w,s,e,n);
