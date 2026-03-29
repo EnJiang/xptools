@@ -90,7 +90,28 @@ private:
 			void		GetEntityInternal(void) const;
 			void		AddEntityRecursive(IGISEntity * e, const Bbox2& bounds) const;
 			void		AddSnapPointRecursive(IGISEntity * e, const Bbox2& bounds, ISelection * sel) const;
+			void		AddSnapTarget(const Point2& loc, IGISEntity * owner, IGISPoint * point_a = NULL, IGISPoint * point_b = NULL) const;
+			void		AddSnapSegment(const Bezier2& side, bool is_bezier, IGISEntity * owner, IGISPoint * point_a, IGISPoint * point_b) const;
+			void		AddIntersectionTargetsNear(const Point2& ideal_track_pt, Point2& io_best, double& io_smallest_dist, bool& io_is_snap, IGISEntity * who) const;
+			void		AddSegmentProjectionTargetsNear(const Point2& ideal_track_pt, Point2& io_best, double& io_smallest_dist, bool& io_is_snap, IGISEntity * who) const;
+			bool		SnapTargetTouchesEntity(const IGISEntity * who, const IGISEntity * owner, const IGISPoint * point_a, const IGISPoint * point_b) const;
 			bool		SnapMovePoint(const Point2& ideal_track_pt, Point2& io_thing_pt, IGISEntity * who);
+
+			struct SnapTarget_t {
+				Point2		loc;
+				IGISEntity *	owner;
+				IGISPoint *	point_a;
+				IGISPoint *	point_b;
+			};
+
+			struct SnapSegment_t {
+				Bezier2		side;
+				bool		is_bezier;
+				IGISEntity *	owner;
+				IGISPoint *	point_a;
+				IGISPoint *	point_b;
+				Bbox2		pixel_bounds;
+			};
 
 		int						mInEdit;
 		int						mIsRotate;
@@ -118,7 +139,8 @@ private:
 		mutable long long				mEntityCacheKeyArchive;
 		mutable long long				mEntityCacheKeyZoomer;
 
-		mutable vector<pair<Point2,IGISEntity *> >		mSnapCache;
+		mutable vector<SnapTarget_t>				mSnapCache;
+		mutable vector<SnapSegment_t>				mSnapSegments;
 		mutable long long								mSnapCacheKeyArchive;
 		mutable long long								mSnapCacheKeyZoomer;
 
