@@ -31,6 +31,8 @@
 #include "GUI_Listener.h"
 #include "GUI_Commander.h"
 #include <stdint.h>
+#include <vector>
+#include <string>
 #include "WED_MapLayer.h"
 
 class	WED_MapLayer;
@@ -88,6 +90,8 @@ private:
 	WED_MapLayer *	mClickLayer;
 	int				mX;
 	int				mY;
+	int				mContextMenuStartX;
+	int				mContextMenuStartY;
 
 	int				mX_Orig;
 	int				mY_Orig;

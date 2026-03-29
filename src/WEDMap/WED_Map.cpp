@@ -39,6 +39,7 @@
 #include "GISUtils.h"
 #include "MathUtils.h"
 #include <time.h>
+#include <cstring>
 
 // This is the size that a GIS composite must be to cause us to skip iterating down into it, in pixels.
 // The idea is that when we are zoomed way out and we have a bunch of global airports, we don't want to
@@ -75,11 +76,84 @@ static bool IsPanGesture(int start_x, int start_y, int end_x, int end_y)
 	return dx * dx + dy * dy > kClickRadiusPixels * kClickRadiusPixels;
 }
 
+struct MapContextCommandSpec {
+	const char * label;
+	int cmd;
+};
+
+static void AppendMapContextMenuItem(
+	GUI_Commander * commander,
+	const MapContextCommandSpec& spec,
+	vector<string>& labels,
+	vector<GUI_MenuItem_t>& items)
+{
+	if (strcmp(spec.label, "-") == 0)
+	{
+		GUI_MenuItem_t item = { "-", 0, 0, 0, 0 };
+		items.push_back(item);
+		return;
+	}
+
+	string label(spec.label);
+	int checked = 0;
+	string dynamic_name(label);
+	const int enabled = commander ? commander->DispatchCanHandleCommand(spec.cmd, dynamic_name, checked) : 0;
+	if (!dynamic_name.empty())
+		label = dynamic_name;
+	if (!enabled)
+		label.insert(label.begin(), ';');
+
+	labels.push_back(label);
+	GUI_MenuItem_t item = { labels.back().c_str(), 0, 0, checked, spec.cmd };
+	items.push_back(item);
+}
+
+static vector<GUI_MenuItem_t> BuildMapContextMenu(
+	GUI_Commander * commander,
+	vector<string>& labels)
+{
+	static const MapContextCommandSpec kSpecs[] = {
+		{ "Center Viewport", wed_ZoomSelection },
+		{ "Duplicate In Place", gui_Duplicate },
+		{ "Delete", gui_Clear },
+		{ "-", 0 },
+		{ "Group", wed_Group },
+		{ "Ungroup", wed_Ungroup },
+		{ "-", 0 },
+		{ "Select Parent", wed_SelectParent },
+		{ "Select Children", wed_SelectChild },
+		{ "Select Vertices", wed_SelectVertex },
+		{ "Select Connected", wed_SelectConnected },
+	};
+
+	labels.clear();
+	labels.reserve(sizeof(kSpecs) / sizeof(kSpecs[0]));
+
+	vector<GUI_MenuItem_t> items;
+	items.reserve(sizeof(kSpecs) / sizeof(kSpecs[0]) + 1);
+	for (const auto& spec : kSpecs)
+		AppendMapContextMenuItem(commander, spec, labels, items);
+
+	GUI_MenuItem_t terminator = { NULL, 0, 0, 0, 0 };
+	items.push_back(terminator);
+	return items;
+}
+
+static bool IsContextMenuClick(int start_x, int start_y, int end_x, int end_y)
+{
+	const int dx = end_x - start_x;
+	const int dy = end_y - start_y;
+	const int kClickRadiusPixels = 4;
+	return dx * dx + dy * dy <= kClickRadiusPixels * kClickRadiusPixels;
+}
+
 }
 
 WED_Map::WED_Map(IResolver * in_resolver, GUI_Commander * cmdr) : GUI_Commander(cmdr), mResolver(in_resolver), mTool(NULL), mClickLayer(NULL),
 					mIsDownCount(0), mIsDownExtraCount(0), mPanLightweightActive(false)
 {
+		mContextMenuStartX = 0;
+		mContextMenuStartY = 0;
 		int k_reg[4] = { 0, 0, 4, 2 };
 		int k_act[4] = { 0, 0, 4, 2 };
 
@@ -477,6 +551,8 @@ int			WED_Map::MouseDown(int x, int y, int button)
 	{
 		mX = x;
 		mY = y;
+		mContextMenuStartX = x;
+		mContextMenuStartY = y;
 		mPanLightweightActive = false;
 	}
 	// Refresh - map tools don't have access to a GUI_Pane and can't force refreshes.  But they are likely to do per-gesture drawing.
@@ -506,7 +582,19 @@ void		WED_Map::MouseUp  (int x, int y, int button)
 	if (button==0&&mClickLayer)	mClickLayer->HandleClickUp(x,y,button, GetModifiersNow());
 	if (button==1)
 	{
-		this->PanPixels(mX, mY, x, y);
+		const bool show_context_menu = IsContextMenuClick(mContextMenuStartX, mContextMenuStartY, x, y);
+		if (show_context_menu)
+		{
+			vector<string> labels;
+			vector<GUI_MenuItem_t> items = BuildMapContextMenu(this, labels);
+			int choice = PopupMenuDynamic(items.data(), x, y, button, -1);
+			if (choice >= 0 && items[choice].cmd != 0)
+				DispatchHandleCommand(items[choice].cmd);
+		}
+		else
+		{
+			this->PanPixels(mX, mY, x, y);
+		}
 		mPanLightweightActive = false;
 	}
 	if(button==0)mClickLayer = NULL;
