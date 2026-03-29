@@ -59,6 +59,75 @@
 
 inline int count_strs(const char ** p) { if (!p) return 0; int n = 0; while(*p) ++p, ++n; return n; }
 
+namespace {
+
+struct HierarchyContextCommandSpec {
+	const char * label;
+	int cmd;
+};
+
+static void AppendHierarchyContextMenuItem(
+	GUI_Commander * commander,
+	const HierarchyContextCommandSpec& spec,
+	vector<string>& labels,
+	vector<GUI_MenuItem_t>& items)
+{
+	if (spec.label[0] == '-' && spec.label[1] == '\0')
+	{
+		GUI_MenuItem_t item = { "-", 0, 0, 0, 0 };
+		items.push_back(item);
+		return;
+	}
+
+	string label(spec.label);
+	int checked = 0;
+	string dynamic_name(label);
+	const int enabled = commander ? commander->DispatchCanHandleCommand(spec.cmd, dynamic_name, checked) : 0;
+	if (!dynamic_name.empty())
+		label = dynamic_name;
+	if (!enabled)
+		label.insert(label.begin(), ';');
+
+	labels.push_back(label);
+	GUI_MenuItem_t item = { labels.back().c_str(), 0, 0, checked, spec.cmd };
+	items.push_back(item);
+}
+
+static vector<GUI_MenuItem_t> BuildHierarchyContextMenu(
+	GUI_Commander * commander,
+	vector<string>& labels)
+{
+	static const HierarchyContextCommandSpec kSpecs[] = {
+		{ "Delete", gui_Clear },
+		{ "Center Viewport", wed_ZoomSelection },
+		{ "-", 0 },
+		{ "Split", wed_Split },
+		{ "Align", wed_Align },
+		{ "Match Bezier Handles", wed_MatchBezierHandles },
+		{ "Orthogonalize", wed_Orthogonalize },
+		{ "Make Regular Poly", wed_RegularPoly },
+		{ "Merge", wed_Merge },
+		{ "Reverse", wed_Reverse },
+		{ "Rotate", wed_Rotate },
+		{ "Crop Unselected", wed_Crop },
+		{ "Break Apart Agp's", wed_BreakApartAgps },
+	};
+
+	labels.clear();
+	labels.reserve(sizeof(kSpecs) / sizeof(kSpecs[0]));
+
+	vector<GUI_MenuItem_t> items;
+	items.reserve(sizeof(kSpecs) / sizeof(kSpecs[0]) + 1);
+	for (const auto& spec : kSpecs)
+		AppendHierarchyContextMenuItem(commander, spec, labels, items);
+
+	GUI_MenuItem_t terminator = { NULL, 0, 0, 0, 0 };
+	items.push_back(terminator);
+	return items;
+}
+
+}
+
 static bool AnyLocked(WED_Thing * t)
 {
 	if (t == NULL) return false;
@@ -642,17 +711,13 @@ bool	WED_PropertyTable::ContextMenuClick(
 	if (!thing)
 		return false;
 
-	static const GUI_MenuItem_t kHierarchyContextMenu[] = {
-		{ "Delete",				0, 0, 0, gui_Clear },
-		{ "Center Viewport",	0, 0, 0, wed_ZoomSelection },
-		{ NULL,					0, 0, 0, 0 }
-	};
-
-	int choice = parent->PopupMenuDynamic(kHierarchyContextMenu, mouse_x, mouse_y, button, -1);
+	vector<string> labels;
+	vector<GUI_MenuItem_t> items = BuildHierarchyContextMenu(this, labels);
+	int choice = parent->PopupMenuDynamic(items.data(), mouse_x, mouse_y, button, -1);
 	if (choice < 0)
 		return true;
 
-	int cmd = kHierarchyContextMenu[choice].cmd;
+	int cmd = items[choice].cmd;
 	if (cmd != 0)
 		DispatchHandleCommand(cmd);
 	return true;
