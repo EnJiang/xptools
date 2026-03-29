@@ -35,6 +35,7 @@ class	WED_Thing;
 class	WED_Archive;
 class	WED_Select;
 class   GUI_Commander;
+class	GUI_Table;
 
 class	WED_PropertyTable : public GUI_TextTableProvider, public GUI_SimpleTableGeometry, public GUI_Listener,
         public GUI_TextTableHeaderProvider, public GUI_Broadcaster, public GUI_Commander {
@@ -103,6 +104,15 @@ public:
 	virtual	int		SelectDisclose(
 						int							open_it,
 						int							all);
+	virtual	bool	SupportsContextMenu(void) const;
+	virtual	bool	ContextMenuClick(
+						GUI_Pane *					parent,
+						int							cell_bounds[4],
+						int							cell_x,
+						int							cell_y,
+						int							mouse_x,
+						int							mouse_y,
+						int							button);
 
 	virtual	int		TabAdvance(
 						int&						io_x,
@@ -175,6 +185,7 @@ public:
 	virtual	void    GetClosed(		set<int>& closed_list);
 
 	void	SetFilter(const string& filter);
+	bool	RevealSelectionInHierarchy(GUI_Table * table, bool center_if_needed);
 
 private:
 
@@ -193,6 +204,11 @@ private:
 									int&	is_disclose);
 
 			void			RecalculateColumns(void);
+			void			OpenThingAncestors(WED_Thing * thing);
+			int				FindRowForThing(WED_Thing * thing);
+			WED_Thing *		ResolveVisibleHierarchyThing(WED_Thing * thing);
+			void			InvalidateSelectionHighlightCache(void);
+			void			RebuildSelectionHighlightCache(void);
 
 			void	Resort();
 
@@ -215,6 +231,8 @@ private:
 	set<string>					mFilter;
 
 	vector<ISelectable *>		mSelSave;
+	set<int>					mHighlightSelectionIds;
+	bool						mHighlightSelectionValid;
 
 };
 

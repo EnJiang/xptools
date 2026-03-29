@@ -94,7 +94,8 @@ WED_PropertyTable::WED_PropertyTable(
 	mDynamicCols(dynamic_cols),
 	mSelOnly(sel_only),
 	mResolver(resolver),
-	mCacheValid(false)
+	mCacheValid(false),
+	mHighlightSelectionValid(false)
 {
 	RebuildCache();
 
@@ -193,7 +194,9 @@ void	WED_PropertyTable::GetCellContent(
 	t->GetNthProperty(idx, val);
 
 	the_content.can_select = mSelOnly ? 0 : 1;
-	the_content.is_selected = s->IsSelected(t);
+	if (!mHighlightSelectionValid)
+		RebuildSelectionHighlightCache();
+	the_content.is_selected = mHighlightSelectionIds.count(t->GetID()) > 0;
 
 	//Based on type turn PropertyVal_t into GUI_CellContent,
 	//taking care of "3. Content"
@@ -440,6 +443,7 @@ void	WED_PropertyTable::ToggleDisclose(
 	if (t)
 		ToggleOpen(t->GetID());
 	mCacheValid = false;
+	InvalidateSelectionHighlightCache();
 	BroadcastMessage(GUI_TABLE_CONTENT_RESIZED,0);
 }
 
@@ -583,6 +587,7 @@ void	WED_PropertyTable::SelectionEnd(void)
 	IOperation * op = dynamic_cast<IOperation *>(s);
 	op->CommitOperation();
 	mSelSave.clear();
+	InvalidateSelectionHighlightCache();
 
    if(gModeratorMode) // special behavior requested by Julian
    {
@@ -616,6 +621,43 @@ void	WED_PropertyTable::SelectionEnd(void)
 	}
 }
 
+bool	WED_PropertyTable::SupportsContextMenu(void) const
+{
+	return !mVertical && !mSelOnly;
+}
+
+bool	WED_PropertyTable::ContextMenuClick(
+						GUI_Pane *					parent,
+						int							cell_bounds[4],
+						int							cell_x,
+						int							cell_y,
+						int							mouse_x,
+						int							mouse_y,
+						int							button)
+{
+	if (!parent || !SupportsContextMenu())
+		return false;
+
+	WED_Thing * thing = FetchNth(mVertical ? cell_x : cell_y);
+	if (!thing)
+		return false;
+
+	static const GUI_MenuItem_t kHierarchyContextMenu[] = {
+		{ "Delete",				0, 0, 0, gui_Clear },
+		{ "Center Viewport",	0, 0, 0, wed_ZoomSelection },
+		{ NULL,					0, 0, 0, 0 }
+	};
+
+	int choice = parent->PopupMenuDynamic(kHierarchyContextMenu, mouse_x, mouse_y, button, -1);
+	if (choice < 0)
+		return true;
+
+	int cmd = kHierarchyContextMenu[choice].cmd;
+	if (cmd != 0)
+		DispatchHandleCommand(cmd);
+	return true;
+}
+
 int		WED_PropertyTable::SelectDisclose(
 						int							open_it,
 						int							all)
@@ -646,8 +688,63 @@ int		WED_PropertyTable::SelectDisclose(
 		}
 	}
 	mCacheValid = false;
+	InvalidateSelectionHighlightCache();
 	BroadcastMessage(GUI_TABLE_CONTENT_RESIZED,0);
 	return 1;
+}
+
+bool	WED_PropertyTable::RevealSelectionInHierarchy(GUI_Table * table, bool center_if_needed)
+{
+	if (!table || mVertical || mSelOnly)
+		return false;
+
+	ISelection * selection = WED_GetSelect(mResolver);
+	if (!selection || selection->GetSelectionCount() == 0)
+		return false;
+
+	WED_Thing * thing = dynamic_cast<WED_Thing *>(selection->GetNthSelection(0));
+	if (!thing)
+		return false;
+
+	OpenThingAncestors(thing);
+
+	WED_Thing * reveal_target = ResolveVisibleHierarchyThing(thing);
+	int row = reveal_target ? FindRowForThing(reveal_target) : -1;
+	if (row < 0)
+		return false;
+
+	int cell_bounds[4];
+	int pane_bounds[4];
+	if (!table->CalcCellBounds(0, row, cell_bounds))
+		return false;
+	table->GetBounds(pane_bounds);
+
+	const bool is_visible =
+		cell_bounds[1] >= pane_bounds[1] &&
+		cell_bounds[3] <= pane_bounds[3];
+
+	if (!is_visible && center_if_needed)
+	{
+		const int cell_center = (cell_bounds[1] + cell_bounds[3]) / 2;
+		const int pane_center = (pane_bounds[1] + pane_bounds[3]) / 2;
+		float total_bounds[4];
+		float visible_bounds[4];
+		table->GetScrollBounds(total_bounds, visible_bounds);
+
+		const float total_height = total_bounds[3] - total_bounds[1];
+		const float visible_height = visible_bounds[3] - visible_bounds[1];
+		const float max_scroll = max(total_height - visible_height, 0.0f);
+		const float target_scroll = min(max(static_cast<float>(table->GetScrollV() + (cell_center - pane_center)), 0.0f), max_scroll);
+		table->ScrollV(target_scroll);
+		table->BroadcastMessage(GUI_SCROLL_CONTENT_SIZE_CHANGED, 0);
+		table->Refresh();
+	}
+	else if (!is_visible)
+	{
+		table->RevealRow(row);
+	}
+
+	return true;
 }
 
 
@@ -1043,8 +1140,85 @@ void	WED_PropertyTable::ReceiveMessage(
 		if (mSelOnly && (inParam & wed_Change_Selection))
 			mCacheValid = false;
 
+		if (inParam & (wed_Change_CreateDestroy | wed_Change_Topology | wed_Change_Selection))
+			InvalidateSelectionHighlightCache();
+
 		RecalculateColumns();
 		BroadcastMessage(GUI_TABLE_CONTENT_RESIZED,0);
+	}
+}
+
+void WED_PropertyTable::OpenThingAncestors(WED_Thing * thing)
+{
+	for (WED_Thing * current = thing ? thing->GetParent() : NULL; current != NULL; current = current->GetParent())
+	{
+		SetOpen(current->GetID(), 1);
+	}
+	mCacheValid = false;
+	InvalidateSelectionHighlightCache();
+}
+
+int	WED_PropertyTable::FindRowForThing(WED_Thing * thing)
+{
+	if (!thing)
+		return -1;
+
+	if (!mCacheValid)
+	{
+		if (mSearchFilter.empty())
+			RebuildCache();
+		else
+			Resort();
+	}
+
+	vector<WED_Thing *>& current_cache = mSearchFilter.empty() ? mThingCache : mSortedCache;
+	for (int idx = 0; idx < current_cache.size(); ++idx)
+	{
+		if (current_cache[idx] == thing)
+			return mVertical ? idx : static_cast<int>(current_cache.size()) - idx - 1;
+	}
+	return -1;
+}
+
+WED_Thing *	WED_PropertyTable::ResolveVisibleHierarchyThing(WED_Thing * thing)
+{
+	for (WED_Thing * current = thing; current != NULL; current = current->GetParent())
+	{
+		if (FindRowForThing(current) >= 0)
+			return current;
+	}
+	return NULL;
+}
+
+void WED_PropertyTable::InvalidateSelectionHighlightCache(void)
+{
+	mHighlightSelectionValid = false;
+	mHighlightSelectionIds.clear();
+}
+
+void WED_PropertyTable::RebuildSelectionHighlightCache(void)
+{
+	mHighlightSelectionIds.clear();
+	mHighlightSelectionValid = true;
+
+	if (mVertical || mSelOnly)
+		return;
+
+	ISelection * selection = WED_GetSelect(mResolver);
+	if (!selection)
+		return;
+
+	vector<ISelectable *> selected;
+	selection->GetSelectionVector(selected);
+	for (vector<ISelectable *>::iterator it = selected.begin(); it != selected.end(); ++it)
+	{
+		WED_Thing * thing = dynamic_cast<WED_Thing *>(*it);
+		if (!thing)
+			continue;
+
+		WED_Thing * highlight_target = ResolveVisibleHierarchyThing(thing);
+		if (highlight_target)
+			mHighlightSelectionIds.insert(highlight_target->GetID());
 	}
 }
 
@@ -1073,6 +1247,7 @@ void WED_PropertyTable::SetClosed(const set<int>& closed_list)
 	    SetOpen(*it,0);
 	}
 	mCacheValid = false;
+	InvalidateSelectionHighlightCache();
 	BroadcastMessage(GUI_TABLE_CONTENT_RESIZED,0);
 }
 
@@ -1101,6 +1276,7 @@ void WED_PropertyTable::SetFilter(const string & filter)
 
 	mSearchFilter = filter;
 	Resort();            // this only rebuilds the mSortedCache, not the mCache
+	InvalidateSelectionHighlightCache();
 
 	BroadcastMessage(GUI_TABLE_CONTENT_RESIZED, 0);
 }

@@ -734,7 +734,11 @@ void	WED_DocumentWindow::ReceiveMessage(
 		XWin::SetFilePath(NULL,mDocument->IsDirty());
 	}
 	else if(inMsg == msg_ArchiveChanged)
+	{
+		if ((inParam & wed_Change_Selection) && mPropPane)
+			mPropPane->RevealSelectionInHierarchy(true);
 		XWin::SetFilePath(NULL,mDocument->IsDirty());
+	}
 }
 
 bool	WED_DocumentWindow::Closed(void)

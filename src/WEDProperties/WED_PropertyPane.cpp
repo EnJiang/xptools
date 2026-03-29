@@ -43,7 +43,8 @@ WED_PropertyPane::WED_PropertyPane(
 			pane_style == propPane_Selection || pane_style == propPane_FilteredVertical,
 			pane_style == propPane_Selection,
 			pane_style == propPane_Selection,
-			filter)
+			filter),
+	mIsHierarchy(pane_style == propPane_Hierarchy)
 {
 	int vertical = pane_style == propPane_Selection || pane_style == propPane_FilteredVertical;
 	int horizontal = pane_style == propPane_Filtered;
@@ -172,6 +173,13 @@ int		WED_PropertyPane::MouseMove(int x, int y)
 void	WED_PropertyPane::SetClosed(set<int> id)
 {
 	mPropertyTable.SetClosed(id);
+}
+
+bool	WED_PropertyPane::RevealSelectionInHierarchy(bool center_if_needed)
+{
+	if (!mIsHierarchy || !mTable)
+		return false;
+	return mPropertyTable.RevealSelectionInHierarchy(mTable, center_if_needed);
 }
 
 

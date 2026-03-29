@@ -78,6 +78,7 @@ public:
 	void		FromPrefs(IDocPrefs * prefs,int id);
 
 	void		SetClosed(set<int> id);
+	bool		RevealSelectionInHierarchy(bool center_if_needed);
 
 	virtual int		MouseMove(int x, int y);
 	virtual	void	ReceiveMessage(
@@ -98,6 +99,7 @@ private:
 	GUI_TextTableSide				mTextTableSide;
 
 	WED_PropertyTable				mPropertyTable;
+	bool							mIsHierarchy;
 };
 
 #endif /* WED_PROPERTYPANE_H */

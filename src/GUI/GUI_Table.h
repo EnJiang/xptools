@@ -94,6 +94,7 @@ class	GUI_TableContent {
 public:
 
 	virtual	void		CellDraw	 (int cell_bounds[4], int cell_x, int cell_y, GUI_GraphState * inState)=0;
+	virtual	bool		WantsContextMenu(void) const { return false; }
 
 	virtual	int			CellMouseDown(int cell_bounds[4], int cell_x, int cell_y, int mouse_x, int mouse_y, int button, GUI_KeyFlags mods, int& wants_lock)=0;
 	virtual	void		CellMouseDrag(int cell_bounds[4], int cell_x, int cell_y, int mouse_x, int mouse_y, int button									  )=0;

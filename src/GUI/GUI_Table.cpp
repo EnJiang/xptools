@@ -201,7 +201,8 @@ void	GUI_Table::RevealCell(int x, int y)
 
 int			GUI_Table::MouseDown(int x, int y, int button)
 {
-	if(button==1)return 0;
+	if (button == 1 && (!mContent || !mContent->WantsContextMenu()))
+		return 0;
 	if (mGeometry == NULL) return 0;
 	if (mContent == NULL) return 0;
 	AlignContents();

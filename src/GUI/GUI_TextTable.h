@@ -230,6 +230,7 @@ public:
 	virtual	int		SelectDisclose(
 						int							open_it,
 						int							all)=0;		// return true if you support this op.
+	virtual	bool	SupportsContextMenu(void) const { return false; }
 
 	virtual	int		TabAdvance(
 						int&						io_x,
@@ -281,6 +282,18 @@ public:
 											GUI_DragOperation			allowed,
 											GUI_DragOperation			recommended)=0;
 
+	virtual	bool	ContextMenuClick(
+						GUI_Pane *					parent,
+						int							cell_bounds[4],
+						int							cell_x,
+						int							cell_y,
+						int							mouse_x,
+						int							mouse_y,
+						int							button)
+	{
+		return false;
+	}
+
 
 };
 
@@ -327,6 +340,7 @@ public:
 
 	//Cell Drawing Method, takes the bounds of the cell, the x and y positions of the cell and the graph state
 	virtual	void		CellDraw	 (int cell_bounds[4], int cell_x, int cell_y, GUI_GraphState * inState);
+	virtual	bool		WantsContextMenu(void) const;
 	virtual	int			CellMouseDown(int cell_bounds[4], int cell_x, int cell_y, int mouse_x, int mouse_y, int button, GUI_KeyFlags flags, int& want_lock);
 	virtual	void		CellMouseDrag(int cell_bounds[4], int cell_x, int cell_y, int mouse_x, int mouse_y, int button									  );
 	virtual	void		CellMouseUp  (int cell_bounds[4], int cell_x, int cell_y, int mouse_x, int mouse_y, int button									  );

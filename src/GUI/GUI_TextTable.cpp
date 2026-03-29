@@ -506,6 +506,11 @@ int GUI_TextTable::CreateMenuFromDict(vector<GUI_MenuItem_t>& items, vector<int>
 	return current_sel;
 }
 
+bool		GUI_TextTable::WantsContextMenu(void) const
+{
+	return mContent && mContent->SupportsContextMenu();
+}
+
 int			GUI_TextTable::CellMouseDown(int cell_bounds[4], int cell_x, int cell_y, int mouse_x, int mouse_y, int button, GUI_KeyFlags flags, int& want_lock)
 {
 	want_lock = 1;
@@ -578,6 +583,20 @@ int			GUI_TextTable::CellMouseDown(int cell_bounds[4], int cell_x, int cell_y, i
 
 	mClickCellX = -1;
 	mClickCellY = -1;
+
+	if (button == 1)
+	{
+		if (mEditInfo.can_select && !mEditInfo.is_selected)
+		{
+			mContent->SelectionStart(1);
+			mContent->SelectRange(cell_x, cell_y, cell_x, cell_y, 0);
+			mContent->SelectionEnd();
+			mContent->GetCellContent(cell_x, cell_y, mEditInfo);
+			BroadcastMessage(GUI_TABLE_CONTENT_CHANGED, 0);
+		}
+
+		return mContent->ContextMenuClick(mParent, cell_bounds, cell_x, cell_y, mouse_x, mouse_y, button) ? 1 : 0;
+	}
 
 	cell_bounds[0] += (mEditInfo.indent_level * mCellIndent);
 
