@@ -264,6 +264,22 @@ static const GUI_MenuItem_t kPerformanceMenu[] = {
 // end-begin?  YES!  Since begin is before the beginnined and end is AFTER the end this gives us ONE extra slot.
 // We NEED that slot to be the null terminator for the menu list.
 static GUI_MenuItem_t kAddMetaDataMenu[wed_AddMetaDataEnd-wed_AddMetaDataBegin] = { 0 };
+static vector<string> kAddMetaDataMenuLabels;
+
+static void InitAddMetaDataMenu(void)
+{
+	if (!kAddMetaDataMenuLabels.empty())
+		return;
+
+	kAddMetaDataMenuLabels.reserve(wed_AddMetaDataEnd - wed_AddMetaDataBegin - 1);
+	for (KeyEnum key_enum = wed_AddMetaDataBegin + 1; key_enum < wed_AddMetaDataEnd; ++key_enum)
+	{
+		kAddMetaDataMenuLabels.push_back(META_KeyDisplayText(key_enum));
+		const int index = key_enum - wed_AddMetaDataBegin - 1;
+		GUI_MenuItem_t menu_item = { kAddMetaDataMenuLabels.back().c_str(), 0, 0, 0, key_enum };
+		kAddMetaDataMenu[index] = menu_item;
+	}
+}
 
 static const GUI_MenuItem_t kHelpMenu[] = {
 {	"&WED User's Guide",			0,	0,										0,	wed_HelpManual },
@@ -354,12 +370,7 @@ void WED_MakeMenus(GUI_Application * inApp)
 	GUI_Menu	airport_menu = inApp->CreateMenu(
 		"&Airport", kAirportMenu, inApp->GetMenuBar(), 0);
 
-	for (KeyEnum key_enum = wed_AddMetaDataBegin + 1; key_enum < wed_AddMetaDataEnd; ++key_enum)
-	{
-		int index = key_enum - wed_AddMetaDataBegin - 1;
-		GUI_MenuItem_t menu_item = { META_KeyDisplayText(key_enum).c_str(), 0, 0, 0, key_enum };
-		kAddMetaDataMenu[index] = menu_item;
-	}
+	InitAddMetaDataMenu();
 
 	GUI_Menu	airport_add_meta_data_menu = inApp->CreateMenu(
 		"Add &Meta Data", kAddMetaDataMenu, airport_menu, 6);//This hardcoded 6 is a reference to
