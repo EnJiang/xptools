@@ -55,6 +55,7 @@
 	_R(WED_AirportNode) \
 	_R(WED_AirportSign) \
 	_R(WED_Group) \
+	_R(WED_ReferenceFolder) \
 	_R(WED_Helipad) \
 	_R(WED_KeyObjects) \
 	_R(WED_LightFixture) \
@@ -81,6 +82,9 @@
 	_R(WED_ForestPlacement) \
 	_R(WED_ShapePlacement) \
 	_R(WED_ShapeNode) \
+	_R(WED_ReferenceLine) \
+	_R(WED_ReferenceRectangle) \
+	_R(WED_ReferenceCircle) \
 	_R(WED_FacadePlacement) \
 	_R(WED_PolygonPlacement) \
 	_R(WED_TerPlacement) \

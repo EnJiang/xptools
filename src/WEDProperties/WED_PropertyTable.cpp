@@ -342,7 +342,7 @@ void	WED_PropertyTable::GetCellContent(
 		the_content.bool_partial = 0;
 		if (mColNames[mVertical ? cell_y : cell_x] == "Locked")		{ the_content.bool_val = gui_Bool_Lock;		if (!the_content.int_val)	the_content.bool_partial = AnyLocked(t); }
 		if (mColNames[mVertical ? cell_y : cell_x] == "Hidden")		{ the_content.bool_val = gui_Bool_Visible;	if (!the_content.int_val)	the_content.bool_partial = AnyHidden(t); }
-		if (mColNames[mVertical ? cell_y : cell_x] == "No Export")	{ the_content.bool_val = gui_Bool_Check;	if (!the_content.int_val)	the_content.bool_partial = AnyNoExport(t); }
+		if (mColNames[mVertical ? cell_y : cell_x] == "No Export")	{ the_content.bool_val = gui_Bool_NoExport;	if (!the_content.int_val)	the_content.bool_partial = AnyNoExport(t); }
 
 		if((mColNames[mVertical ? cell_y : cell_x] == "Locked" || mColNames[mVertical ? cell_y : cell_x] == "Hidden" || mColNames[mVertical ? cell_y : cell_x] == "No Export") &&
 			SAFE_CAST(WED_GISPolygon,my_parent))
@@ -392,6 +392,13 @@ void	WED_PropertyTable::GetCellContent(
 	the_content.can_edit = inf.can_edit;
 	if (the_content.can_edit)
 	if (WED_GetWorld(mResolver) == t)	the_content.can_edit = 0;
+	if (the_content.can_edit &&
+		mColNames[mVertical ? cell_y : cell_x] == "No Export")
+	{
+		if (WED_Entity * entity = dynamic_cast<WED_Entity *>(t))
+			if (entity->IsNoExportForced())
+				the_content.can_edit = 0;
+	}
 
 	//THIS IS A HACK to stop the user from being able to disclose arrows during search mode
 	if (mSearchFilter.empty() == false)

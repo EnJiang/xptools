@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Laminar Research.
+ * Copyright (c) 2026, Laminar Research.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,42 +21,18 @@
  *
  */
 
-#include "WED_ShapePlacement.h"
+#ifndef WED_REFERENCELINE_H
+#define WED_REFERENCELINE_H
 
-DEFINE_PERSISTENT(WED_ShapePlacement)
-TRIVIAL_COPY(WED_ShapePlacement,WED_GISChain)
+#include "WED_ReferenceShape.h"
 
-WED_ShapePlacement::WED_ShapePlacement(WED_Archive * a, int i) : WED_GISChain(a,i),
-	closed(this, PROP_Name("Closed",      XML_Name("shape_placement", "closed")), 0),
-	text  (this, PROP_Name("Description", XML_Name("shape_placement", "description")), "")
-{
-}
+class WED_ReferenceLine : public WED_ReferenceShape {
 
-WED_ShapePlacement::~WED_ShapePlacement()
-{
-}
+DECLARE_PERSISTENT(WED_ReferenceLine)
 
-bool WED_ShapePlacement::IsClosed(void) const
-{
-	return closed.value;
-}
+public:
 
-void WED_ShapePlacement::InitClosedRaw(int c)
-{
-	closed.value = (c != 0);
-}
+	virtual const char * HumanReadableType(void) const { return "Reference Line"; }
+};
 
-void WED_ShapePlacement::SetClosed(int c)
-{
-	closed = c;
-}
-
-void WED_ShapePlacement::GetString(  string& r) const
-{
-	r = text.value;
-}
-
-void WED_ShapePlacement::SetString(const string& r)
-{
-	text = r;
-}
+#endif /* WED_REFERENCELINE_H */

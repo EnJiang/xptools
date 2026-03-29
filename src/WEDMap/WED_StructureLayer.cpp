@@ -65,6 +65,9 @@
 #include "WED_AirportBoundary.h"
 #include "WED_ATCLayer.h"
 #include "WED_LinePlacement.h"
+#include "WED_ReferenceCircle.h"
+#include "WED_ReferenceLine.h"
+#include "WED_ReferenceRectangle.h"
 #include "WED_ResourceMgr.h"
 #include "WED_ShapePlacement.h"
 #include "WED_TerPlacement.h"
@@ -103,11 +106,20 @@ bool		WED_StructureLayer::DrawEntityStructure		(bool inCurrent, IGISEntity * ent
 	WED_Color struct_color = selected ? (locked ? wed_StructureLockedSelected : wed_StructureSelected) :
 										(locked ? wed_StructureLocked		 : wed_Structure);
 
+	const char *	sub_class	= entity->GetGISSubtype();
+
+	const bool is_reference_shape =
+		sub_class == WED_ReferenceLine::sClass ||
+		sub_class == WED_ReferenceRectangle::sClass ||
+		sub_class == WED_ReferenceCircle::sClass;
+	if (is_reference_shape)
+		struct_color = selected ? (locked ? wed_ReferenceLockedSelected : wed_ReferenceSelected) :
+								  (locked ? wed_ReferenceLocked : wed_Reference);
+
 	float * colorf = WED_Color_RGBA(struct_color);
 	glColor4fv(colorf);
 
 	GISClass_t 		kind		= entity->GetGISClass();
-	const char *	sub_class	= entity->GetGISSubtype();
 
 	float							storage[4];
 
@@ -492,6 +504,13 @@ bool		WED_StructureLayer::DrawEntityStructure		(bool inCurrent, IGISEntity * ent
 					}
 				}
 				bool showRealLines = mRealLines && z->GetPPM() * 0.4 <= MIN_PIXELS_PREVIEW;
+				const bool use_reference_style = is_reference_shape;
+				if (use_reference_style)
+				{
+					glLineWidth(selected ? 2.0f : 1.5f);
+					glLineStipple(1, 0x3f0f);
+					glEnable(GL_LINE_STIPPLE);
+				}
 
 				if(sub_class == WED_LinePlacement::sClass && showRealLines)
 				{
@@ -634,6 +653,7 @@ bool		WED_StructureLayer::DrawEntityStructure		(bool inCurrent, IGISEntity * ent
 					}
 				}
 				glPointSize(1);
+				glLineWidth(1);
 				glDisable(GL_LINE_STIPPLE);
 			}
 		}

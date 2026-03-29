@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Laminar Research.
+ * Copyright (c) 2026, Laminar Research.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,42 +21,15 @@
  *
  */
 
-#include "WED_ShapePlacement.h"
+#include "WED_ReferenceShape.h"
 
-DEFINE_PERSISTENT(WED_ShapePlacement)
-TRIVIAL_COPY(WED_ShapePlacement,WED_GISChain)
+TRIVIAL_COPY(WED_ReferenceShape, WED_ShapePlacement)
 
-WED_ShapePlacement::WED_ShapePlacement(WED_Archive * a, int i) : WED_GISChain(a,i),
-	closed(this, PROP_Name("Closed",      XML_Name("shape_placement", "closed")), 0),
-	text  (this, PROP_Name("Description", XML_Name("shape_placement", "description")), "")
+WED_ReferenceShape::WED_ReferenceShape(WED_Archive * a, int i) : WED_ShapePlacement(a, i)
 {
+	InitNoExportRaw(1);
 }
 
-WED_ShapePlacement::~WED_ShapePlacement()
+WED_ReferenceShape::~WED_ReferenceShape()
 {
-}
-
-bool WED_ShapePlacement::IsClosed(void) const
-{
-	return closed.value;
-}
-
-void WED_ShapePlacement::InitClosedRaw(int c)
-{
-	closed.value = (c != 0);
-}
-
-void WED_ShapePlacement::SetClosed(int c)
-{
-	closed = c;
-}
-
-void WED_ShapePlacement::GetString(  string& r) const
-{
-	r = text.value;
-}
-
-void WED_ShapePlacement::SetString(const string& r)
-{
-	text = r;
 }

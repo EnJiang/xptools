@@ -41,6 +41,7 @@ public:
 
 protected:
 
+	void		InitClosedRaw(int closure);
 	virtual	bool			IsJustPoints(void) const { return false; }
 
 private:

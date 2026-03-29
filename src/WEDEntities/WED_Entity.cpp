@@ -81,7 +81,28 @@ int		WED_Entity::GetNoExportRecursive(void) const
 
 int		WED_Entity::GetNoExport(void) const
 {
+	if (IsNoExportForced())
+		return 1;
 	return no_export.value;
+}
+
+void	WED_Entity::InitNoExportRaw(int v)
+{
+	no_export.value = (v != 0);
+}
+
+void	WED_Entity::SetNoExport(int v)
+{
+	if (IsNoExportForced())
+	{
+		no_export.value = 1;
+		return;
+	}
+	if (no_export.value != v)
+	{
+		StateChanged();
+		no_export = (v != 0);
+	}
 }
 
 // Read from DB or undo mem - in both cases, mark our cache as invalid...the real core data has probably been

@@ -63,6 +63,10 @@
 #include "WED_Orthophoto.h"
 #include "WED_OverlayImage.h"
 #include "WED_PolygonPlacement.h"
+#include "WED_ReferenceCircle.h"
+#include "WED_ReferenceFolder.h"
+#include "WED_ReferenceLine.h"
+#include "WED_ReferenceRectangle.h"
 #include "WED_RampPosition.h"
 #include "WED_Ring.h"
 #include "WED_RoadEdge.h"
@@ -83,9 +87,11 @@
 #include "WED_LibraryMgr.h"
 #include "WED_Menus.h"
 #include "WED_MetaDataKeys.h"
+#include "WED_MapPane.h"
 #include "WED_MapZoomerNew.h"
 #include "WED_MarqueeTool.h"
 #include "WED_ResourceMgr.h"
+#include "WED_ShapeNode.h"
 #include "WED_Sign_Editor.h"
 #include "WED_ToolUtils.h"
 #include "WED_UIDefs.h"
@@ -457,6 +463,610 @@ void	WED_DoSetCurrentAirport(IResolver * inResolver)
 	want_sel->CommitCommand();
 
 
+}
+
+namespace {
+
+static const char * kReferenceRootFolderName = "Reference Geometry";
+static const char * kReferenceParallelFolderName = "Parallel References";
+static const int kReferenceCircleMinSegments = 8;
+static const int kReferenceCircleMaxSegments = 144;
+
+struct ReferenceBaselineInfo {
+	bool	valid;
+	Point2	source;
+	Point2	target;
+	Point2	center;
+	double	heading;
+	double	length_m;
+
+	ReferenceBaselineInfo() : valid(false), heading(0.0), length_m(0.0) { }
+};
+
+static string FormatReferenceDouble(double value, int precision = 1)
+{
+	ostringstream ss;
+	ss << fixed << setprecision(precision) << value;
+	return ss.str();
+}
+
+static double ParseDoubleOrDefault(const string& text, double fallback)
+{
+	char * end = NULL;
+	double value = strtod(text.c_str(), &end);
+	return end == text.c_str() ? fallback : value;
+}
+
+static int ParseIntOrDefault(const string& text, int fallback)
+{
+	char * end = NULL;
+	long value = strtol(text.c_str(), &end, 10);
+	return end == text.c_str() ? fallback : static_cast<int>(value);
+}
+
+static bool TryGetLineEndpointsFromThing(WED_Thing * thing, Point2& p1, Point2& p2)
+{
+	if (thing == NULL)
+		return false;
+
+	if (IGISLine * line = dynamic_cast<IGISLine *>(thing))
+	{
+		line->GetSource()->GetLocation(gis_Geo, p1);
+		line->GetTarget()->GetLocation(gis_Geo, p2);
+		return Vector2(p1, p2).squared_length() > 0.0;
+	}
+
+	if (IGISLine_Width * line_width = dynamic_cast<IGISLine_Width *>(thing))
+	{
+		Point2 corners[4];
+		line_width->GetCorners(gis_Geo, corners);
+		p1 = Segment2(corners[0], corners[3]).midpoint(0.5);
+		p2 = Segment2(corners[1], corners[2]).midpoint(0.5);
+		return Vector2(p1, p2).squared_length() > 0.0;
+	}
+
+	if (IGISEdge * edge = dynamic_cast<IGISEdge *>(thing))
+	{
+		Bezier2 side;
+		edge->GetSide(gis_Geo, 0, side);
+		p1 = side.p1;
+		p2 = side.p2;
+		return Vector2(p1, p2).squared_length() > 0.0;
+	}
+
+	if (IGISPointSequence * sequence = dynamic_cast<IGISPointSequence *>(thing))
+	{
+		if (!sequence->IsClosed() && sequence->GetNumPoints() >= 2)
+		{
+			sequence->GetNthPoint(0)->GetLocation(gis_Geo, p1);
+			sequence->GetNthPoint(sequence->GetNumPoints() - 1)->GetLocation(gis_Geo, p2);
+			return Vector2(p1, p2).squared_length() > 0.0;
+		}
+	}
+
+	return false;
+}
+
+static bool TryExtractReferenceBaseline(IResolver * resolver, ReferenceBaselineInfo& out_baseline)
+{
+	vector<WED_Thing *> selection;
+	WED_GetSelectionInOrder(resolver, selection);
+
+	Point2 p1, p2;
+	if (selection.size() == 2)
+	{
+		IGISPoint * point_a = dynamic_cast<IGISPoint *>(selection[0]);
+		IGISPoint * point_b = dynamic_cast<IGISPoint *>(selection[1]);
+		if (point_a == NULL || point_b == NULL)
+			return false;
+		point_a->GetLocation(gis_Geo, p1);
+		point_b->GetLocation(gis_Geo, p2);
+	}
+	else if (selection.size() == 1)
+	{
+		if (!TryGetLineEndpointsFromThing(selection.front(), p1, p2))
+			return false;
+	}
+	else
+	{
+		return false;
+	}
+
+	if (Vector2(p1, p2).squared_length() <= 0.0)
+		return false;
+
+	Point2 ends[2] = { p1, p2 };
+	Quad_2to1(ends, out_baseline.center, out_baseline.heading, out_baseline.length_m);
+	out_baseline.source = p1;
+	out_baseline.target = p2;
+	out_baseline.valid = out_baseline.length_m > 0.01;
+	return out_baseline.valid;
+}
+
+static bool TryGetSelectionBounds(IResolver * resolver, Bbox2& bounds)
+{
+	vector<WED_Thing *> selection;
+	WED_GetSelectionInOrder(resolver, selection);
+
+	bool any = false;
+	for (vector<WED_Thing *>::iterator it = selection.begin(); it != selection.end(); ++it)
+	{
+		if (IGISEntity * entity = dynamic_cast<IGISEntity *>(*it))
+		{
+			Bbox2 entity_bounds;
+			entity->GetBounds(gis_Geo, entity_bounds);
+			if (!entity_bounds.is_empty())
+			{
+				if (!any)
+					bounds = entity_bounds;
+				else
+					bounds += entity_bounds;
+				any = true;
+			}
+		}
+	}
+	return any;
+}
+
+static Point2 GetReferenceViewportCenter(WED_MapPane * map_pane)
+{
+	return map_pane ? map_pane->GetMapVisibleBounds().centroid() : Point2(0.0, 0.0);
+}
+
+static Point2 GetDefaultReferenceCenter(IResolver * resolver, WED_MapPane * map_pane)
+{
+	ReferenceBaselineInfo baseline;
+	if (TryExtractReferenceBaseline(resolver, baseline))
+		return baseline.center;
+
+	vector<WED_Thing *> selection;
+	WED_GetSelectionInOrder(resolver, selection);
+	if (selection.size() == 1)
+	{
+		if (IGISPoint * point = dynamic_cast<IGISPoint *>(selection.front()))
+		{
+			Point2 location;
+			point->GetLocation(gis_Geo, location);
+			return location;
+		}
+	}
+
+	Bbox2 selection_bounds;
+	if (TryGetSelectionBounds(resolver, selection_bounds))
+		return selection_bounds.centroid();
+
+	return GetReferenceViewportCenter(map_pane);
+}
+
+static WED_ReferenceFolder * FindReferenceFolderAncestor(WED_Thing * thing)
+{
+	while (thing)
+	{
+		if (thing->GetClass() == WED_ReferenceFolder::sClass)
+			return static_cast<WED_ReferenceFolder *>(thing);
+		thing = thing->GetParent();
+	}
+	return NULL;
+}
+
+static WED_ReferenceFolder * FindNamedReferenceFolder(WED_Thing * parent, const string& name)
+{
+	if (parent == NULL)
+		return NULL;
+
+	for (int n = 0; n < parent->CountChildren(); ++n)
+	{
+		WED_Thing * child = parent->GetNthChild(n);
+		if (child->GetClass() == WED_ReferenceFolder::sClass)
+		{
+			string child_name;
+			child->GetName(child_name);
+			if (child_name == name)
+				return static_cast<WED_ReferenceFolder *>(child);
+		}
+	}
+	return NULL;
+}
+
+static WED_Thing * GetReferenceScope(IResolver * resolver)
+{
+	vector<WED_Thing *> selection;
+	WED_GetSelectionInOrder(resolver, selection);
+
+	for (vector<WED_Thing *>::iterator it = selection.begin(); it != selection.end(); ++it)
+	{
+		if (WED_ReferenceFolder * folder = FindReferenceFolderAncestor(*it))
+			return folder;
+	}
+
+	if (!selection.empty())
+	{
+		if (WED_Airport * airport = WED_GetParentAirport(selection.front()))
+			return airport;
+	}
+
+	if (WED_Airport * airport = WED_GetCurrentAirport(resolver))
+		return airport;
+
+	return WED_GetWorld(resolver);
+}
+
+static WED_ReferenceFolder * GetOrCreateReferenceRoot(IResolver * resolver)
+{
+	WED_Thing * scope = GetReferenceScope(resolver);
+	if (scope->GetClass() == WED_ReferenceFolder::sClass)
+		return static_cast<WED_ReferenceFolder *>(scope);
+
+	if (WED_ReferenceFolder * existing = FindNamedReferenceFolder(scope, kReferenceRootFolderName))
+		return existing;
+
+	WED_ReferenceFolder * folder = WED_ReferenceFolder::CreateTyped(scope->GetArchive());
+	folder->SetName(kReferenceRootFolderName);
+	folder->SetParent(scope, scope->CountChildren());
+	return folder;
+}
+
+static WED_ReferenceFolder * CreateReferenceSubfolder(WED_Thing * parent, const string& name)
+{
+	WED_ReferenceFolder * folder = WED_ReferenceFolder::CreateTyped(parent->GetArchive());
+	folder->SetName(name.empty() ? kReferenceParallelFolderName : name);
+	folder->SetParent(parent, parent->CountChildren());
+	return folder;
+}
+
+static void AddReferenceNode(WED_ReferenceShape * shape, const Point2& location)
+{
+	const int index = shape->CountChildren();
+	WED_ShapeNode * node = WED_ShapeNode::CreateTyped(shape->GetArchive());
+	node->SetParent(shape, index);
+	node->SetName(string("Node ") + to_string(index + 1));
+	node->SetLocation(gis_Geo, location);
+}
+
+static void SetReferenceShapePoints(WED_ReferenceShape * shape, const vector<Point2>& points)
+{
+	for (vector<Point2>::const_iterator it = points.begin(); it != points.end(); ++it)
+		AddReferenceNode(shape, *it);
+}
+
+static WED_ReferenceLine * CreateReferenceLineFromEnds(WED_Thing * parent, const string& name, const Point2& p1, const Point2& p2)
+{
+	WED_ReferenceLine * line = WED_ReferenceLine::CreateTyped(parent->GetArchive());
+	line->SetName(name.empty() ? "Reference Line" : name);
+	line->SetParent(parent, parent->CountChildren());
+
+	vector<Point2> points;
+	points.push_back(p1);
+	points.push_back(p2);
+	SetReferenceShapePoints(line, points);
+	return line;
+}
+
+static WED_ReferenceLine * CreateReferenceLineCentered(WED_Thing * parent, const string& name, const Point2& center, double heading, double length_m)
+{
+	Point2 ends[2];
+	Quad_1to2(center, heading, length_m, ends);
+	return CreateReferenceLineFromEnds(parent, name, ends[0], ends[1]);
+}
+
+static WED_ReferenceRectangle * CreateReferenceRectangleCentered(WED_Thing * parent, const string& name, const Point2& center, double heading, double length_m, double width_m)
+{
+	Point2 corners[4];
+	Quad_1to4(center, heading, length_m, width_m, corners);
+
+	WED_ReferenceRectangle * rectangle = WED_ReferenceRectangle::CreateTyped(parent->GetArchive());
+	rectangle->SetName(name.empty() ? "Reference Rectangle" : name);
+	rectangle->SetParent(parent, parent->CountChildren());
+
+	vector<Point2> points(corners, corners + 4);
+	SetReferenceShapePoints(rectangle, points);
+	return rectangle;
+}
+
+static WED_ReferenceCircle * CreateReferenceCircleCentered(WED_Thing * parent, const string& name, const Point2& center, double radius_m, int segments)
+{
+	segments = intlim(segments, kReferenceCircleMinSegments, kReferenceCircleMaxSegments);
+
+	WED_ReferenceCircle * circle = WED_ReferenceCircle::CreateTyped(parent->GetArchive());
+	circle->SetName(name.empty() ? "Reference Circle" : name);
+	circle->SetParent(parent, parent->CountChildren());
+
+	vector<Point2> points;
+	points.reserve(segments);
+	for (int n = 0; n < segments; ++n)
+	{
+		Vector2 radial;
+		NorthHeading2VectorMeters(center, center, (360.0 * n) / segments, radial);
+		radial.normalize();
+		radial *= radius_m;
+		points.push_back(center + VectorMetersToLL(center, radial));
+	}
+	SetReferenceShapePoints(circle, points);
+	return circle;
+}
+
+class WED_ReferenceDialogBase : public GUI_FormWindow {
+public:
+	WED_ReferenceDialogBase(IResolver * resolver, WED_MapPane * map_pane, const string& title, int width, int height) :
+		GUI_FormWindow(gApplication, title, width, height),
+		mResolver(resolver),
+		mMapPane(map_pane),
+		mCenter(GetDefaultReferenceCenter(resolver, map_pane))
+	{
+		mHasBaseline = TryExtractReferenceBaseline(resolver, mBaseline);
+	}
+
+	virtual void Cancel()
+	{
+		this->AsyncDestroy();
+	}
+
+protected:
+	double ReadDoubleField(int field_id, double fallback)
+	{
+		return ParseDoubleOrDefault(this->GetField(field_id), fallback);
+	}
+
+	int ReadIntField(int field_id, int fallback)
+	{
+		return ParseIntOrDefault(this->GetField(field_id), fallback);
+	}
+
+	void FinishCreate(WED_Thing * world, WED_Thing * selection_target)
+	{
+		ISelection * selection = WED_GetSelect(mResolver);
+		selection->Clear();
+		if (selection_target)
+			selection->Select(selection_target);
+		world->CommitOperation();
+		this->AsyncDestroy();
+	}
+
+	IResolver * mResolver;
+	WED_MapPane * mMapPane;
+	ReferenceBaselineInfo mBaseline;
+	bool mHasBaseline;
+	Point2 mCenter;
+};
+
+enum {
+	ref_line_name = 1,
+	ref_line_length,
+	ref_line_heading
+};
+
+class WED_ReferenceLineDialog : public WED_ReferenceDialogBase {
+public:
+	WED_ReferenceLineDialog(IResolver * resolver, WED_MapPane * map_pane) :
+		WED_ReferenceDialogBase(resolver, map_pane, "Create Reference Line", 460, 230)
+	{
+		this->Reset("", "Create", "Cancel", true);
+		this->AddLabel("Create a non-exported reference line.");
+		this->AddField(ref_line_name, "Name", "Reference Line");
+		this->AddField(ref_line_length, "Length (m)", FormatReferenceDouble(mHasBaseline ? mBaseline.length_m : 100.0));
+		this->AddField(ref_line_heading, "Heading", FormatReferenceDouble(mHasBaseline ? mBaseline.heading : 0.0));
+	}
+
+	virtual void Submit()
+	{
+		const double length_m = max(1.0, ReadDoubleField(ref_line_length, 100.0));
+		const double heading = ReadDoubleField(ref_line_heading, mHasBaseline ? mBaseline.heading : 0.0);
+		WED_Thing * world = WED_GetWorld(mResolver);
+		world->StartOperation("Create Reference Line");
+		WED_ReferenceFolder * root = GetOrCreateReferenceRoot(mResolver);
+		WED_ReferenceLine * line = CreateReferenceLineCentered(root, this->GetField(ref_line_name), mHasBaseline ? mBaseline.center : mCenter, heading, length_m);
+		FinishCreate(world, line);
+	}
+};
+
+enum {
+	ref_rect_name = 1,
+	ref_rect_length,
+	ref_rect_width,
+	ref_rect_heading
+};
+
+class WED_ReferenceRectangleDialog : public WED_ReferenceDialogBase {
+public:
+	WED_ReferenceRectangleDialog(IResolver * resolver, WED_MapPane * map_pane) :
+		WED_ReferenceDialogBase(resolver, map_pane, "Create Reference Rectangle", 460, 260)
+	{
+		const double default_length = mHasBaseline ? mBaseline.length_m : 100.0;
+		const double default_width = max(10.0, default_length * 0.25);
+		this->Reset("", "Create", "Cancel", true);
+		this->AddLabel("Create a non-exported reference rectangle.");
+		this->AddField(ref_rect_name, "Name", "Reference Rectangle");
+		this->AddField(ref_rect_length, "Length (m)", FormatReferenceDouble(default_length));
+		this->AddField(ref_rect_width, "Width (m)", FormatReferenceDouble(default_width));
+		this->AddField(ref_rect_heading, "Heading", FormatReferenceDouble(mHasBaseline ? mBaseline.heading : 0.0));
+	}
+
+	virtual void Submit()
+	{
+		const double length_m = max(1.0, ReadDoubleField(ref_rect_length, 100.0));
+		const double width_m = max(1.0, ReadDoubleField(ref_rect_width, 25.0));
+		const double heading = ReadDoubleField(ref_rect_heading, mHasBaseline ? mBaseline.heading : 0.0);
+		WED_Thing * world = WED_GetWorld(mResolver);
+		world->StartOperation("Create Reference Rectangle");
+		WED_ReferenceFolder * root = GetOrCreateReferenceRoot(mResolver);
+		WED_ReferenceRectangle * rectangle = CreateReferenceRectangleCentered(root, this->GetField(ref_rect_name), mHasBaseline ? mBaseline.center : mCenter, heading, length_m, width_m);
+		FinishCreate(world, rectangle);
+	}
+};
+
+enum {
+	ref_circle_name = 1,
+	ref_circle_radius,
+	ref_circle_segments
+};
+
+class WED_ReferenceCircleDialog : public WED_ReferenceDialogBase {
+public:
+	WED_ReferenceCircleDialog(IResolver * resolver, WED_MapPane * map_pane) :
+		WED_ReferenceDialogBase(resolver, map_pane, "Create Reference Circle", 460, 230)
+	{
+		const double default_radius = mHasBaseline ? max(1.0, mBaseline.length_m * 0.5) : 50.0;
+		this->Reset("", "Create", "Cancel", true);
+		this->AddLabel("Create a non-exported reference circle.");
+		this->AddField(ref_circle_name, "Name", "Reference Circle");
+		this->AddField(ref_circle_radius, "Radius (m)", FormatReferenceDouble(default_radius));
+		this->AddField(ref_circle_segments, "Segments", "24");
+	}
+
+	virtual void Submit()
+	{
+		const double radius_m = max(1.0, ReadDoubleField(ref_circle_radius, 50.0));
+		const int segments = intlim(ReadIntField(ref_circle_segments, 24), kReferenceCircleMinSegments, kReferenceCircleMaxSegments);
+		WED_Thing * world = WED_GetWorld(mResolver);
+		world->StartOperation("Create Reference Circle");
+		WED_ReferenceFolder * root = GetOrCreateReferenceRoot(mResolver);
+		WED_ReferenceCircle * circle = CreateReferenceCircleCentered(root, this->GetField(ref_circle_name), mHasBaseline ? mBaseline.center : mCenter, radius_m, segments);
+		FinishCreate(world, circle);
+	}
+};
+
+enum {
+	ref_parallel_name = 1,
+	ref_parallel_each_side,
+	ref_parallel_spacing,
+	ref_parallel_length
+};
+
+class WED_ParallelReferenceLinesDialog : public WED_ReferenceDialogBase {
+public:
+	WED_ParallelReferenceLinesDialog(IResolver * resolver, WED_MapPane * map_pane) :
+		WED_ReferenceDialogBase(resolver, map_pane, "Create Parallel Reference Lines", 500, 280)
+	{
+		this->Reset("", "Create", "Cancel", true);
+		this->AddLabel("Create a non-exported parallel reference-line family from the selected baseline.");
+		this->AddFieldNoEdit(100, "Baseline Heading", FormatReferenceDouble(mBaseline.heading));
+		this->AddField(ref_parallel_name, "Folder Name", kReferenceParallelFolderName);
+		this->AddField(ref_parallel_each_side, "Lines Each Side", "2");
+		this->AddField(ref_parallel_spacing, "Spacing (m)", "10");
+		this->AddField(ref_parallel_length, "Line Length (m)", FormatReferenceDouble(max(1.0, mBaseline.length_m)));
+	}
+
+	virtual void Submit()
+	{
+		const int each_side = max(0, ReadIntField(ref_parallel_each_side, 2));
+		const double spacing_m = max(0.1, ReadDoubleField(ref_parallel_spacing, 10.0));
+		const double length_m = max(1.0, ReadDoubleField(ref_parallel_length, mBaseline.length_m));
+
+		Vector2 axis = VectorLLToMeters(mBaseline.center, Vector2(mBaseline.source, mBaseline.target));
+		if (axis.normalize() <= 0.0)
+		{
+			DoUserAlert("Selected baseline is too short for parallel references.");
+			return;
+		}
+		Vector2 normal = axis.perpendicular_ccw();
+
+		WED_Thing * world = WED_GetWorld(mResolver);
+		world->StartOperation("Create Parallel Reference Lines");
+		WED_ReferenceFolder * root = GetOrCreateReferenceRoot(mResolver);
+		WED_ReferenceFolder * folder = CreateReferenceSubfolder(root, this->GetField(ref_parallel_name));
+
+		for (int index = -each_side; index <= each_side; ++index)
+		{
+			Vector2 offset_m = normal * (spacing_m * index);
+			Point2 center = mBaseline.center + VectorMetersToLL(mBaseline.center, offset_m);
+			string line_name = string("Reference Line ") + to_string(index);
+			CreateReferenceLineCentered(folder, line_name, center, mBaseline.heading, length_m);
+		}
+
+		FinishCreate(world, folder);
+	}
+};
+
+enum {
+	ref_perp_name = 1,
+	ref_perp_length
+};
+
+class WED_PerpendicularReferenceLineDialog : public WED_ReferenceDialogBase {
+public:
+	WED_PerpendicularReferenceLineDialog(IResolver * resolver, WED_MapPane * map_pane) :
+		WED_ReferenceDialogBase(resolver, map_pane, "Create Perpendicular Reference Line", 480, 240)
+	{
+		this->Reset("", "Create", "Cancel", true);
+		this->AddLabel("Create a non-exported perpendicular reference line through the selected baseline midpoint.");
+		this->AddFieldNoEdit(100, "Baseline Heading", FormatReferenceDouble(mBaseline.heading));
+		this->AddField(ref_perp_name, "Name", "Reference Perpendicular");
+		this->AddField(ref_perp_length, "Length (m)", FormatReferenceDouble(max(1.0, mBaseline.length_m)));
+	}
+
+	virtual void Submit()
+	{
+		const double length_m = max(1.0, ReadDoubleField(ref_perp_length, mBaseline.length_m));
+		WED_Thing * world = WED_GetWorld(mResolver);
+		world->StartOperation("Create Perpendicular Reference Line");
+		WED_ReferenceFolder * root = GetOrCreateReferenceRoot(mResolver);
+		WED_ReferenceLine * line = CreateReferenceLineCentered(root, this->GetField(ref_perp_name), mBaseline.center, mBaseline.heading + 90.0, length_m);
+		FinishCreate(world, line);
+	}
+};
+
+}
+
+int		WED_CanCreateReferenceLine(IResolver * resolver)
+{
+	return resolver != NULL;
+}
+
+void	WED_DoCreateReferenceLine(IResolver * resolver, WED_MapPane * map_pane)
+{
+	if (!WED_CanCreateReferenceLine(resolver))
+		return;
+	new WED_ReferenceLineDialog(resolver, map_pane);
+}
+
+int		WED_CanCreateReferenceRectangle(IResolver * resolver)
+{
+	return resolver != NULL;
+}
+
+void	WED_DoCreateReferenceRectangle(IResolver * resolver, WED_MapPane * map_pane)
+{
+	if (!WED_CanCreateReferenceRectangle(resolver))
+		return;
+	new WED_ReferenceRectangleDialog(resolver, map_pane);
+}
+
+int		WED_CanCreateReferenceCircle(IResolver * resolver)
+{
+	return resolver != NULL;
+}
+
+void	WED_DoCreateReferenceCircle(IResolver * resolver, WED_MapPane * map_pane)
+{
+	if (!WED_CanCreateReferenceCircle(resolver))
+		return;
+	new WED_ReferenceCircleDialog(resolver, map_pane);
+}
+
+int		WED_CanCreateParallelReferenceLines(IResolver * resolver)
+{
+	ReferenceBaselineInfo baseline;
+	return resolver != NULL && TryExtractReferenceBaseline(resolver, baseline);
+}
+
+void	WED_DoCreateParallelReferenceLines(IResolver * resolver, WED_MapPane * map_pane)
+{
+	if (!WED_CanCreateParallelReferenceLines(resolver))
+		return;
+	new WED_ParallelReferenceLinesDialog(resolver, map_pane);
+}
+
+int		WED_CanCreatePerpendicularReferenceLine(IResolver * resolver)
+{
+	ReferenceBaselineInfo baseline;
+	return resolver != NULL && TryExtractReferenceBaseline(resolver, baseline);
+}
+
+void	WED_DoCreatePerpendicularReferenceLine(IResolver * resolver, WED_MapPane * map_pane)
+{
+	if (!WED_CanCreatePerpendicularReferenceLine(resolver))
+		return;
+	new WED_PerpendicularReferenceLineDialog(resolver, map_pane);
 }
 
 

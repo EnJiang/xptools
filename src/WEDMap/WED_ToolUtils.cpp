@@ -50,6 +50,7 @@
 #include "WED_ATCWindRule.h"
 #include "WED_AutogenNode.h"
 #include "WED_Group.h"
+#include "WED_ReferenceFolder.h"
 #include "WED_Helipad.h"
 #include "WED_LightFixture.h"
 #include "WED_RampPosition.h"
@@ -368,7 +369,7 @@ bool WED_IsFolder(WED_Thing * what)
 	return false;
 #else
 	const char * c = what->GetClass();
-	return (c == WED_Group::sClass || c == WED_ATCFlow::sClass || c == WED_Airport::sClass);
+	return (c == WED_Group::sClass || c == WED_ReferenceFolder::sClass || c == WED_ATCFlow::sClass || c == WED_Airport::sClass);
 #endif
 }
 

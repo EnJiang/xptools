@@ -260,6 +260,15 @@ static const GUI_MenuItem_t kAirportMenu[] = {
 {	NULL,						0,		0,										0, 0,				}
 };
 
+static const GUI_MenuItem_t kReferenceMenu[] = {
+{	"Create Reference &Line...",			0,	0,								0,	wed_CreateReferenceLine				},
+{	"Create Reference &Rectangle...",		0,	0,								0,	wed_CreateReferenceRectangle		},
+{	"Create Reference &Circle...",			0,	0,								0,	wed_CreateReferenceCircle			},
+{	"Create &Parallel Reference Lines...",	0,	0,								0,	wed_CreateParallelReferenceLines	},
+{	"Create Per&pendicular Reference Line...",0,	0,							0,	wed_CreatePerpendicularReferenceLine},
+{	NULL,									0,	0,								0,	0									}
+};
+
 static const GUI_MenuItem_t kPerformanceMenu[] = {
 {	"&Cache Artifact",			0,		0,										0,	wed_ToggleArtifactCache	},
 {	"Clear Artifact Cache",		0,		0,										0,	wed_ClearArtifactCache	},
@@ -380,6 +389,8 @@ void WED_MakeMenus(GUI_Application * inApp)
 	GUI_Menu	airport_add_meta_data_menu = inApp->CreateMenu(
 		"Add &Meta Data", kAddMetaDataMenu, airport_menu, 6);//This hardcoded 6 is a reference to
 															 //kAirportMenu[6]
+	GUI_Menu	reference_menu = inApp->CreateMenu(
+		"&Reference", kReferenceMenu, inApp->GetMenuBar(), 0);
 	GUI_Menu	performance_menu = inApp->CreateMenu(
 		"&Performance", kPerformanceMenu, inApp->GetMenuBar(), 0);
 	GUI_Menu	help_menu = inApp->CreateMenu(

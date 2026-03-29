@@ -166,6 +166,12 @@ enum {
 	wed_EdgePavement,
 	wed_MowGrass,
 	wed_AlignApt,
+	// Reference Menu
+	wed_CreateReferenceLine,
+	wed_CreateReferenceRectangle,
+	wed_CreateReferenceCircle,
+	wed_CreateParallelReferenceLines,
+	wed_CreatePerpendicularReferenceLine,
 	//-- Add Metadata Keys Menu--
 	//Organized by alphabetical order - MUST EXACTLY MATCH definition of known_keys[] in WED_MetaDataKeys.cpp
 	wed_AddMetaDataBegin,//WARNING: DO NOT USE!

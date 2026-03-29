@@ -167,6 +167,8 @@ set (WED_SOURCES
 	src/WEDEntities/WED_GISPolygon.h
 	src/WEDEntities/WED_Group.cpp
 	src/WEDEntities/WED_Group.h
+	src/WEDEntities/WED_ReferenceFolder.cpp
+	src/WEDEntities/WED_ReferenceFolder.h
 	src/WEDEntities/WED_Helipad.cpp
 	src/WEDEntities/WED_Helipad.h
 	src/WEDEntities/WED_KeyObjects.cpp
@@ -211,6 +213,14 @@ set (WED_SOURCES
 	src/WEDEntities/WED_ShapePlacement.h
 	src/WEDEntities/WED_ShapeNode.cpp
 	src/WEDEntities/WED_ShapeNode.h
+	src/WEDEntities/WED_ReferenceShape.cpp
+	src/WEDEntities/WED_ReferenceShape.h
+	src/WEDEntities/WED_ReferenceLine.cpp
+	src/WEDEntities/WED_ReferenceLine.h
+	src/WEDEntities/WED_ReferenceRectangle.cpp
+	src/WEDEntities/WED_ReferenceRectangle.h
+	src/WEDEntities/WED_ReferenceCircle.cpp
+	src/WEDEntities/WED_ReferenceCircle.h
 	src/WEDEntities/WED_TaxiRoute.cpp
 	src/WEDEntities/WED_TaxiRoute.h
 	src/WEDEntities/WED_TaxiRouteNode.cpp

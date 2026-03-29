@@ -74,6 +74,7 @@ enum GUI_CellContentType {
 
 enum GUI_BoolIcon {
 	gui_Bool_Check,
+	gui_Bool_NoExport,
 	gui_Bool_Lock,
 	gui_Bool_Visible
 };

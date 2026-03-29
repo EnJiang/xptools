@@ -53,6 +53,22 @@ float *		WED_Color_RGBA(WED_Color c)
 			colors[n*4+3] = (float) ptr[3] / 255.0;
 		}
 		colors[wed_pure_white*4] = colors[wed_pure_white*4+1] = colors[wed_pure_white*4+2] = colors[wed_pure_white*4+3] = 1.0f;
+		colors[wed_Reference * 4 + 0] = 0.05f;
+		colors[wed_Reference * 4 + 1] = 0.85f;
+		colors[wed_Reference * 4 + 2] = 1.00f;
+		colors[wed_Reference * 4 + 3] = 1.00f;
+		colors[wed_ReferenceSelected * 4 + 0] = 1.00f;
+		colors[wed_ReferenceSelected * 4 + 1] = 0.76f;
+		colors[wed_ReferenceSelected * 4 + 2] = 0.16f;
+		colors[wed_ReferenceSelected * 4 + 3] = 1.00f;
+		colors[wed_ReferenceLocked * 4 + 0] = 0.22f;
+		colors[wed_ReferenceLocked * 4 + 1] = 0.58f;
+		colors[wed_ReferenceLocked * 4 + 2] = 0.68f;
+		colors[wed_ReferenceLocked * 4 + 3] = 1.00f;
+		colors[wed_ReferenceLockedSelected * 4 + 0] = 0.89f;
+		colors[wed_ReferenceLockedSelected * 4 + 1] = 0.60f;
+		colors[wed_ReferenceLockedSelected * 4 + 2] = 0.18f;
+		colors[wed_ReferenceLockedSelected * 4 + 3] = 1.00f;
 		
 		DestroyBitmap(&im);
 	}

@@ -114,7 +114,9 @@ public:
 			int		GetLocked(void) const;           // non-recursive
 			int		GetHidden(void) const;
 			int		GetNoExportRecursive(void) const;
-			int		GetNoExport(void) const;
+	virtual	int		GetNoExport(void) const;
+	virtual	void	SetNoExport(int no_export);
+	virtual	bool	IsNoExportForced(void) const { return false; }
 
 	virtual	bool 	ReadFrom(IOReader * reader);
 	
@@ -122,6 +124,7 @@ public:
 	
 protected:
 
+			void	InitNoExportRaw(int no_export);
 			void	CacheInval(int flags);				// Invalidate the cache.
 			int		CacheBuild(int flags) const;		// Set cache to valid.  Returns true if cache needed rebuilding
 

@@ -32,6 +32,7 @@ struct	Point2;
 class	Bbox2;
 
 class	WED_Archive;
+class	WED_MapPane;
 class	WED_MapZoomerNew;
 class	WED_Thing;
 
@@ -65,6 +66,17 @@ void	WED_DoMakeNewATCTimeRule(IResolver * inResolver);
 
 int		WED_CanSetCurrentAirport(IResolver * inResolver, string& io_cmd_name);
 void	WED_DoSetCurrentAirport(IResolver * inResolver);
+
+int		WED_CanCreateReferenceLine(IResolver * resolver);
+void	WED_DoCreateReferenceLine(IResolver * resolver, WED_MapPane * map_pane);
+int		WED_CanCreateReferenceRectangle(IResolver * resolver);
+void	WED_DoCreateReferenceRectangle(IResolver * resolver, WED_MapPane * map_pane);
+int		WED_CanCreateReferenceCircle(IResolver * resolver);
+void	WED_DoCreateReferenceCircle(IResolver * resolver, WED_MapPane * map_pane);
+int		WED_CanCreateParallelReferenceLines(IResolver * resolver);
+void	WED_DoCreateParallelReferenceLines(IResolver * resolver, WED_MapPane * map_pane);
+int		WED_CanCreatePerpendicularReferenceLine(IResolver * resolver);
+void	WED_DoCreatePerpendicularReferenceLine(IResolver * resolver, WED_MapPane * map_pane);
 
 bool	WED_CanAddMetaData(IResolver * inResolver, int command);
 void	WED_DoAddMetaData(IResolver * inResolver, int command);

@@ -465,6 +465,11 @@ int	WED_DocumentWindow::HandleCommand(int command)
 	// wed_EdgePavement,
 	// wed_MowGrass,
 	case wed_AlignApt:	WED_AlignAirports(mDocument);	return 1;
+	case wed_CreateReferenceLine: WED_DoCreateReferenceLine(mDocument, mMapPane); return 1;
+	case wed_CreateReferenceRectangle: WED_DoCreateReferenceRectangle(mDocument, mMapPane); return 1;
+	case wed_CreateReferenceCircle: WED_DoCreateReferenceCircle(mDocument, mMapPane); return 1;
+	case wed_CreateParallelReferenceLines: WED_DoCreateParallelReferenceLines(mDocument, mMapPane); return 1;
+	case wed_CreatePerpendicularReferenceLine: WED_DoCreatePerpendicularReferenceLine(mDocument, mMapPane); return 1;
 	case wed_CreateApt:	WED_DoMakeNewAirport(mDocument); return 1;
 	case wed_EditApt:	WED_DoSetCurrentAirport(mDocument); return 1;
 	case gui_Close:		mDocument->TryClose();	return 1;
@@ -607,6 +612,11 @@ int	WED_DocumentWindow::CanHandleCommand(int command, string& ioName, int& ioChe
 	case wed_AgePavement:	 return 1;
 	case wed_EdgePavement:   return 0;    //  still Todo !!!!
 	case wed_MowGrass:       return 1;
+	case wed_CreateReferenceLine: return WED_CanCreateReferenceLine(mDocument);
+	case wed_CreateReferenceRectangle: return WED_CanCreateReferenceRectangle(mDocument);
+	case wed_CreateReferenceCircle: return WED_CanCreateReferenceCircle(mDocument);
+	case wed_CreateParallelReferenceLines: return WED_CanCreateParallelReferenceLines(mDocument);
+	case wed_CreatePerpendicularReferenceLine: return WED_CanCreatePerpendicularReferenceLine(mDocument);
 
 
 	case wed_CreateApt:	return WED_CanMakeNewAirport(mDocument);

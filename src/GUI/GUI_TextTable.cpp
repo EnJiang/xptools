@@ -435,19 +435,22 @@ void		GUI_TextTable::CellDraw	 (int cell_bounds[4], int cell_x, int cell_y, GUI_
 	//--This section draws all Checkbox related items
 	if (c.content_type == gui_Cell_CheckBox)
 	{
+		const bool inverted_check = c.bool_val == gui_Bool_NoExport;
 		int selector[4] = {
-			(c.int_val != 0) ? 1 : (c.bool_partial ? 2 : 0),
+			inverted_check ? ((c.int_val != 0) ? 0 : (c.bool_partial ? 2 : 1))
+						   : ((c.int_val != 0) ? 1 : (c.bool_partial ? 2 : 0)),
 			0,
-			c.bool_val == gui_Bool_Check ? 2 : 3,
+			(c.bool_val == gui_Bool_Check || c.bool_val == gui_Bool_NoExport) ? 2 : 3,
 			1 };
 
 
-		 if (c.bool_val ==  gui_Bool_Check)
+		 if (c.bool_val ==  gui_Bool_Check || c.bool_val == gui_Bool_NoExport)
 		 		glColor4fv((c.is_selected||cell_type) ? mColorTextSelect : mColorText);
 		else
 				glColor3f(1,1,1);
 		switch(c.bool_val) {
 		case gui_Bool_Check:		GUI_DrawCentered(inState, "check.png", cell_bounds, 0, 0, selector, NULL, NULL);	break;
+		case gui_Bool_NoExport:	GUI_DrawCentered(inState, "check.png", cell_bounds, 0, 0, selector, NULL, NULL);	break;
 		case gui_Bool_Lock:			GUI_DrawCentered(inState, "lock.png", cell_bounds, 0, 0, selector, NULL, NULL);		break;
 		case gui_Bool_Visible:		GUI_DrawCentered(inState, "eye.png", cell_bounds, 0, 0, selector, NULL, NULL);		break;
 		}
