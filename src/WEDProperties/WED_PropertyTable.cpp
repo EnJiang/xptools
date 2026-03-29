@@ -98,8 +98,18 @@ static vector<GUI_MenuItem_t> BuildHierarchyContextMenu(
 	vector<string>& labels)
 {
 	static const HierarchyContextCommandSpec kSpecs[] = {
-		{ "Delete", gui_Clear },
 		{ "Center Viewport", wed_ZoomSelection },
+		{ "Duplicate In Place", gui_Duplicate },
+		{ "Copy into Current Airport", wed_CopyToAirport },
+		{ "Delete", gui_Clear },
+		{ "-", 0 },
+		{ "Group", wed_Group },
+		{ "Ungroup", wed_Ungroup },
+		{ "-", 0 },
+		{ "Move First", wed_MoveFirst },
+		{ "Move Up", wed_MovePrev },
+		{ "Move Down", wed_MoveNext },
+		{ "Move Last", wed_MoveLast },
 		{ "-", 0 },
 		{ "Split", wed_Split },
 		{ "Align", wed_Align },
@@ -111,6 +121,14 @@ static vector<GUI_MenuItem_t> BuildHierarchyContextMenu(
 		{ "Rotate", wed_Rotate },
 		{ "Crop Unselected", wed_Crop },
 		{ "Break Apart Agp's", wed_BreakApartAgps },
+		{ "-", 0 },
+		{ "Convert To Draped Polygon", wed_ConvertToPolygon },
+		{ "Convert To Taxiway", wed_ConvertToTaxiway },
+		{ "Convert To Airport Line Marking", wed_ConvertToTaxiline },
+		{ "Convert To Line", wed_ConvertToLine },
+		{ "Convert To Object String", wed_ConvertToString },
+		{ "Convert To Forest Points", wed_ConvertToForest },
+		{ "Convert To Shape Points", wed_ConvertToShape },
 	};
 
 	labels.clear();
