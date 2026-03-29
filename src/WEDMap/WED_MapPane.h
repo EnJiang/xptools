@@ -34,6 +34,8 @@
 #include <stdint.h>
 
 class GUI_ToolBar;
+class GUI_Button;
+class GUI_Label;
 class WED_Map;
 class WED_MapToolNew;
 class WED_MapLayer;
@@ -85,6 +87,10 @@ public:
 			void		SetResource(const string& r, int res_type);
 
 			GUI_Pane *	GetTopBar(void);
+			int			GetLayerVisibilityMask(void) const;
+			void		SetLayerVisibilityMask(int mask);
+	virtual void		SetBounds(int x1, int y1, int x2, int y2);
+	virtual void		SetBounds(int inBounds[4]);
 
 			int				Map_KeyPress(uint32_t inKey, int inVK, GUI_KeyFlags inFlags)	 	;
 			int				Map_HandleCommand(int command) 									;
@@ -101,6 +107,12 @@ public:
 
 private:
 
+			void		BuildLayerVisibilityPanel(void);
+			void		LayoutLayerVisibilityPanel(void);
+			void		SyncLayerVisibilityPanel(void);
+			void		ToggleLayerVisibilityPanel(void);
+			void		SetLayerVisibilityPanelShown(bool shown);
+			bool		HandleLayerVisibilityMessage(intptr_t inMsg);
 			void		SetTabFilterMode(int mode);
 
 
@@ -125,6 +137,13 @@ private:
 	GUI_Table *						mTable;
 	GUI_TextTable *					mTextTable;
 	WED_ToolInfoAdapter *			mInfoAdapter;
+	GUI_Packer *					mLayerVisibilityPanel;
+	GUI_Label *						mLayerVisibilityTitle;
+	GUI_Label *						mLayerVisibilityHint;
+	vector<GUI_Button *>			mLayerVisibilityChecks;
+	GUI_Button *					mLayerVisibilityShowAll;
+	GUI_Button *					mLayerVisibilityHideAll;
+	GUI_Button *					mLayerVisibilityDone;
 
 	IResolver *				mResolver;
 
@@ -136,6 +155,8 @@ private:
 	WED_CreatePolygonTool * mAgsTool;
 	WED_CreatePolygonTool * mPolTool;
 	WED_MarqueeTool *		mMarqueeTool;
+	int						mTabFilterMode;
+	int						mLayerVisibilityMask;
 #if ROAD_EDITING
 	WED_CreateEdgeTool    * mNetTool;
 #endif

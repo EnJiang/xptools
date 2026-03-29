@@ -161,6 +161,7 @@ static const GUI_MenuItem_t kViewMenu[] = {
 {	"Show &Line Markings",		0,	0,										0,	wed_ToggleLines		},
 {	"Show &Vertices",			0,	0,										0,	wed_ToggleVertices	},
 {	"Show Ramp / Gate &Labels",	0,	0,										0,	wed_ToggleRampLabels},
+{	"Layer &Visibility...",		0,	0,										0,	wed_ShowLayerVisibilityDialog },
 {	"Pavement Transparenc&y",	0,	0,										0,	0					},
 {	"&Object Density",			0,	0,										0,	0					},
 {	"-",						0,	0,										0,	0					},
@@ -352,18 +353,18 @@ void WED_MakeMenus(GUI_Application * inApp)
 		"&View", kViewMenu, inApp->GetMenuBar(), 0);
 
 	GUI_Menu	pave_menu = inApp->CreateMenu(
-		"Pavement Transparenc&y",	kPavementMenu, view_menu, 7);
+		"Pavement Transparenc&y",	kPavementMenu, view_menu, 8);
 
 	GUI_Menu	objd_menu = inApp->CreateMenu(
-		"&Object Density", kObjDensityMenu, view_menu, 8);
+		"&Object Density", kObjDensityMenu, view_menu, 9);
 
 	GUI_Menu	slippy_menu = inApp->CreateMenu(
-		"S&lippy Map",	kSlippyMapMenu, view_menu, 14);
+		"S&lippy Map",	kSlippyMapMenu, view_menu, 15);
 
 #if WITHNWLINK
-	const int preview_window_parent = 18;
+	const int preview_window_parent = 19;
 #else
-	const int preview_window_parent = 17;
+	const int preview_window_parent = 18;
 #endif
 	GUI_Menu	preview_window_menu = inApp->CreateMenu(
 		"3D Preview &Window", k3DPreviewMenu, view_menu, preview_window_parent);

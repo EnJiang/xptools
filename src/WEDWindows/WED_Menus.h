@@ -118,6 +118,7 @@ enum {
 	wed_ToggleLines,
 	wed_ToggleVertices,
 	wed_ToggleRampLabels,
+	wed_ShowLayerVisibilityDialog,
 	wed_PickOverlay,
 //	wed_ToggleOverlay,
 	wed_ToggleWorldMap,

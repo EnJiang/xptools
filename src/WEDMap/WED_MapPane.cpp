@@ -48,7 +48,10 @@
 #include "WED_DebugLayer.h"
 #include "WED_VertexTool.h"
 #include "WED_TerraserverLayer.h"
+#include "GUI_Button.h"
 #include "GUI_Fonts.h"
+#include "GUI_Label.h"
+#include "GUI_Messages.h"
 #include "GUI_Table.h"
 #include "GUI_TextTable.h"
 #include "WED_Colors.h"
@@ -96,6 +99,53 @@ enum //Must be kept in sync with TabPane
     tab_Exclusions,
     tab_Texture
 };
+
+enum
+{
+	layer_vis_Terrain    = 1 << 0,
+	layer_vis_Pavement   = 1 << 1,
+	layer_vis_ATC        = 1 << 2,
+	layer_vis_Markings   = 1 << 3,
+	layer_vis_Objects    = 1 << 4,
+	layer_vis_Roads      = 1 << 5,
+	layer_vis_Footprints = 1 << 6,
+	layer_vis_Exclusions = 1 << 7,
+	layer_vis_All        = layer_vis_Terrain |
+						   layer_vis_Pavement |
+						   layer_vis_ATC |
+						   layer_vis_Markings |
+						   layer_vis_Objects |
+						   layer_vis_Roads |
+						   layer_vis_Footprints |
+						   layer_vis_Exclusions
+};
+
+namespace {
+
+struct LayerVisibilitySpec {
+	int bit;
+	const char * label;
+};
+
+static const LayerVisibilitySpec kLayerVisibilitySpecs[] = {
+	{ layer_vis_Terrain,    "Terrain / Orthophoto" },
+	{ layer_vis_Pavement,   "Pavement" },
+	{ layer_vis_ATC,        "ATC Taxi + Flow" },
+	{ layer_vis_Markings,   "Markings / Signs" },
+	{ layer_vis_Objects,    "3D Objects" },
+	{ layer_vis_Roads,      "Roads" },
+	{ layer_vis_Footprints, "Forests / Footprints" },
+	{ layer_vis_Exclusions, "Exclusions / Boundaries" }
+};
+
+enum
+{
+	layer_visibility_msg_show_all = GUI_APP_MESSAGES,
+	layer_visibility_msg_hide_all,
+	layer_visibility_msg_done,
+	layer_visibility_msg_checkbox_base
+};
+}
 
 // A bit of a hack...zoom to selection sets the zoom so that the screen is filled with the sel.  If the sel size is 0 in both
 // dimensions, our zoom is NaN, which is bad. But try telling that to users!
@@ -148,7 +198,16 @@ static void GetExtentSel(Bbox2& box, IResolver * resolver)
 
 
 WED_MapPane::WED_MapPane(GUI_Commander * cmdr, double map_bounds[4], IResolver * resolver, WED_Archive * archive, WED_LibraryListAdapter * library)
-	: GUI_Commander(cmdr), mResolver(resolver)
+	: GUI_Commander(cmdr),
+	  mLayerVisibilityPanel(NULL),
+	  mLayerVisibilityTitle(NULL),
+	  mLayerVisibilityHint(NULL),
+	  mLayerVisibilityShowAll(NULL),
+	  mLayerVisibilityHideAll(NULL),
+	  mLayerVisibilityDone(NULL),
+	  mResolver(resolver),
+	  mTabFilterMode(tab_Selection),
+	  mLayerVisibilityMask(layer_vis_All)
 {
 	this->SetBkgkndImage("gradient.png");
 
@@ -314,15 +373,218 @@ WED_MapPane::WED_MapPane(GUI_Commander * cmdr, double map_bounds[4], IResolver *
 
 	archive->AddListener(mMap);
 
-	// This is a band-aid.  We don't restore the current tab in the tab hierarchy (as of WED 1.5) so we don't get a tab changed message.  Instead we just
-	// are always in the selection tab.  So mostly that means the defaults for things like filters are fine, but for the ATC layer it needs to be off!
-	mATCLayer->ToggleVisible();
-	mBdyLayer->ToggleVisible();
+	BuildLayerVisibilityPanel();
+	SetTabFilterMode(tab_Selection);
 }
 
 GUI_Pane *	WED_MapPane::GetTopBar(void)
 {
 	return mTable;
+}
+
+void		WED_MapPane::SetBounds(int x1, int y1, int x2, int y2)
+{
+	GUI_Packer::SetBounds(x1, y1, x2, y2);
+	LayoutLayerVisibilityPanel();
+}
+
+void		WED_MapPane::SetBounds(int inBounds[4])
+{
+	GUI_Packer::SetBounds(inBounds);
+	LayoutLayerVisibilityPanel();
+}
+
+void		WED_MapPane::BuildLayerVisibilityPanel(void)
+{
+	int check_off[4] = { 0, 1, 1, 2 };
+	int check_on[4] = { 0, 0, 1, 1 };
+	int k_reg[4] = { 0, 0, 1, 3 };
+	int k_hil[4] = { 0, 1, 1, 3 };
+
+	mLayerVisibilityPanel = new GUI_Packer();
+	mLayerVisibilityPanel->SetParent(this);
+	mLayerVisibilityPanel->SetBkgkndImage("gradient.png");
+
+	mLayerVisibilityTitle = new GUI_Label();
+	mLayerVisibilityTitle->SetDescriptor("Layer Visibility");
+	mLayerVisibilityTitle->SetFont(font_UI_Basic);
+	mLayerVisibilityTitle->SetColors(WED_Color_RGBA(wed_Table_Text));
+	mLayerVisibilityTitle->SetParent(mLayerVisibilityPanel);
+	mLayerVisibilityTitle->Show();
+
+	mLayerVisibilityHint = new GUI_Label();
+	mLayerVisibilityHint->SetDescriptor("Temporarily show or hide map groups.");
+	mLayerVisibilityHint->SetFont(font_UI_Small);
+	mLayerVisibilityHint->SetColors(WED_Color_RGBA(wed_Table_Text));
+	mLayerVisibilityHint->SetParent(mLayerVisibilityPanel);
+	mLayerVisibilityHint->Show();
+
+	mLayerVisibilityChecks.reserve(sizeof(kLayerVisibilitySpecs) / sizeof(kLayerVisibilitySpecs[0]));
+	for (int i = 0; i < static_cast<int>(sizeof(kLayerVisibilitySpecs) / sizeof(kLayerVisibilitySpecs[0])); ++i)
+	{
+		GUI_Button * check = new GUI_Button("check_buttons.png", btn_Check, check_off, check_off, check_on, check_on);
+		check->SetDescriptor(kLayerVisibilitySpecs[i].label);
+		check->SetParent(mLayerVisibilityPanel);
+		check->Show();
+		check->AddListener(this);
+		check->SetMsg(layer_visibility_msg_checkbox_base + i, 0);
+		mLayerVisibilityChecks.push_back(check);
+	}
+
+	mLayerVisibilityShowAll = new GUI_Button("push_buttons.png", btn_Push, k_reg, k_hil, k_reg, k_hil);
+	mLayerVisibilityShowAll->SetDescriptor("Show All");
+	mLayerVisibilityShowAll->SetParent(mLayerVisibilityPanel);
+	mLayerVisibilityShowAll->Show();
+	mLayerVisibilityShowAll->AddListener(this);
+	mLayerVisibilityShowAll->SetMsg(layer_visibility_msg_show_all, 0);
+
+	mLayerVisibilityHideAll = new GUI_Button("push_buttons.png", btn_Push, k_reg, k_hil, k_reg, k_hil);
+	mLayerVisibilityHideAll->SetDescriptor("Hide All");
+	mLayerVisibilityHideAll->SetParent(mLayerVisibilityPanel);
+	mLayerVisibilityHideAll->Show();
+	mLayerVisibilityHideAll->AddListener(this);
+	mLayerVisibilityHideAll->SetMsg(layer_visibility_msg_hide_all, 0);
+
+	mLayerVisibilityDone = new GUI_Button("push_buttons.png", btn_Push, k_reg, k_hil, k_reg, k_hil);
+	mLayerVisibilityDone->SetDescriptor("Done");
+	mLayerVisibilityDone->SetParent(mLayerVisibilityPanel);
+	mLayerVisibilityDone->Show();
+	mLayerVisibilityDone->AddListener(this);
+	mLayerVisibilityDone->SetMsg(layer_visibility_msg_done, 0);
+
+	LayoutLayerVisibilityPanel();
+	SyncLayerVisibilityPanel();
+}
+
+void		WED_MapPane::LayoutLayerVisibilityPanel(void)
+{
+	if (!mLayerVisibilityPanel)
+		return;
+
+	const int panel_w = 460;
+	const int panel_h = 238;
+	const int margin = 18;
+	const int title_h = GUI_GetLineHeight(font_UI_Basic);
+	const int hint_h = GUI_GetLineHeight(font_UI_Small);
+	const int check_h = GUI_GetImageResourceHeight("check_buttons.png") / 3;
+	const int button_h = GUI_GetImageResourceHeight("push_buttons.png") / 2;
+
+	int b[4];
+	GetBounds(b);
+	const int panel_x2 = b[2] - margin;
+	const int panel_x1 = max(b[0] + margin, panel_x2 - panel_w);
+	const int panel_y2 = b[3] - margin;
+	const int panel_y1 = max(b[1] + margin, panel_y2 - panel_h);
+	mLayerVisibilityPanel->SetBounds(panel_x1, panel_y1, panel_x2, panel_y2);
+
+	const int inner_left = panel_x1 + 16;
+	const int inner_right = panel_x2 - 16;
+	const int first_col = inner_left;
+	const int second_col = panel_x1 + 230;
+	const int row_start = panel_y2 - 74;
+	const int row_step = 30;
+
+	mLayerVisibilityTitle->SetBounds(inner_left, panel_y2 - 24 - title_h, inner_right, panel_y2 - 18);
+	mLayerVisibilityHint->SetBounds(inner_left, panel_y2 - 46 - hint_h, inner_right, panel_y2 - 30);
+
+	for (int i = 0; i < static_cast<int>(mLayerVisibilityChecks.size()); ++i)
+	{
+		const int col = i % 2;
+		const int row = i / 2;
+		const int left = (col == 0) ? first_col : second_col;
+		const int bottom = row_start - row * row_step;
+		mLayerVisibilityChecks[i]->SetBounds(left, bottom, left + 190, bottom + check_h);
+	}
+
+	mLayerVisibilityShowAll->SetBounds(panel_x1 + 16, panel_y1 + 12, panel_x1 + 126, panel_y1 + 12 + button_h);
+	mLayerVisibilityHideAll->SetBounds(panel_x1 + 170, panel_y1 + 12, panel_x1 + 280, panel_y1 + 12 + button_h);
+	mLayerVisibilityDone->SetBounds(panel_x2 - 126, panel_y1 + 12, panel_x2 - 16, panel_y1 + 12 + button_h);
+}
+
+void		WED_MapPane::SyncLayerVisibilityPanel(void)
+{
+	if (!mLayerVisibilityPanel)
+		return;
+
+	const int mask = mLayerVisibilityMask;
+	for (int i = 0; i < static_cast<int>(mLayerVisibilityChecks.size()); ++i)
+		mLayerVisibilityChecks[i]->SetValue((mask & kLayerVisibilitySpecs[i].bit) ? 1.0f : 0.0f);
+}
+
+void		WED_MapPane::SetLayerVisibilityPanelShown(bool shown)
+{
+	if (!mLayerVisibilityPanel)
+		return;
+
+	if (shown)
+	{
+		LayoutLayerVisibilityPanel();
+		SyncLayerVisibilityPanel();
+		mLayerVisibilityPanel->Show();
+	}
+	else
+	{
+		mLayerVisibilityPanel->Hide();
+	}
+	Refresh();
+}
+
+void		WED_MapPane::ToggleLayerVisibilityPanel(void)
+{
+	SetLayerVisibilityPanelShown(!mLayerVisibilityPanel->IsVisible());
+}
+
+bool		WED_MapPane::HandleLayerVisibilityMessage(intptr_t inMsg)
+{
+	if (inMsg == layer_visibility_msg_show_all)
+	{
+		SetLayerVisibilityMask(layer_vis_All);
+		SyncLayerVisibilityPanel();
+		return true;
+	}
+
+	if (inMsg == layer_visibility_msg_hide_all)
+	{
+		SetLayerVisibilityMask(0);
+		SyncLayerVisibilityPanel();
+		return true;
+	}
+
+	if (inMsg == layer_visibility_msg_done)
+	{
+		SetLayerVisibilityPanelShown(false);
+		return true;
+	}
+
+	const int first_checkbox_msg = layer_visibility_msg_checkbox_base;
+	const int last_checkbox_msg = first_checkbox_msg + static_cast<int>(mLayerVisibilityChecks.size()) - 1;
+	if (inMsg >= first_checkbox_msg && inMsg <= last_checkbox_msg)
+	{
+		int mask = 0;
+		for (int i = 0; i < static_cast<int>(mLayerVisibilityChecks.size()); ++i)
+			if (mLayerVisibilityChecks[i]->GetValue() > 0.0f)
+				mask |= kLayerVisibilitySpecs[i].bit;
+		SetLayerVisibilityMask(mask);
+		return true;
+	}
+
+	return false;
+}
+
+int			WED_MapPane::GetLayerVisibilityMask(void) const
+{
+	return mLayerVisibilityMask;
+}
+
+void		WED_MapPane::SetLayerVisibilityMask(int mask)
+{
+	mask &= layer_vis_All;
+	if (mask == mLayerVisibilityMask)
+		return;
+
+	mLayerVisibilityMask = mask;
+	SetTabFilterMode(mTabFilterMode);
+	SyncLayerVisibilityPanel();
 }
 
 WED_MapPane::~WED_MapPane()
@@ -445,6 +707,7 @@ int		WED_MapPane::Map_HandleCommand(int command)
 	case wed_ToggleLines:	mStructureLayer->SetRealLinesShowing(!mStructureLayer->GetRealLinesShowing());				return 1;
 	case wed_ToggleVertices:mStructureLayer->SetVerticesShowing(!mStructureLayer->GetVerticesShowing());				return 1;
 	case wed_ToggleRampLabels:mStructureLayer->SetRampLabelsShowing(!mStructureLayer->GetRampLabelsShowing());		return 1;
+	case wed_ShowLayerVisibilityDialog: ToggleLayerVisibilityPanel(); return 1;
 
 	case wed_ZoomWorld:		mMap->ZoomShowArea(-180,-90,180,90);	mMap->Refresh(); return 1;
 	case wed_ZoomAll:		GetExtentAll(box, mResolver); mMap->ZoomShowArea(box.p1.x(),box.p1.y(),box.p2.x(),box.p2.y());	mMap->Refresh(); return 1;
@@ -488,6 +751,7 @@ int		WED_MapPane::Map_CanHandleCommand(int command, string& ioName, int& ioCheck
 	case wed_ToggleLines:	ioCheck = mStructureLayer->GetRealLinesShowing();		return 1;
 	case wed_ToggleVertices:ioCheck = mStructureLayer->GetVerticesShowing();		return 1;
 	case wed_ToggleRampLabels:ioCheck = mStructureLayer->GetRampLabelsShowing();	return 1;
+	case wed_ShowLayerVisibilityDialog: return 1;
 
 	case wed_ZoomWorld:		return 1;
 	case wed_ZoomAll:		GetExtentAll(box, mResolver); return !box.is_empty()  && !box.is_null();
@@ -512,6 +776,10 @@ void	WED_MapPane::ReceiveMessage(
 		mMap->SetTool(t);
 		mInfoAdapter->SetTool(t);
 	}
+	else if (HandleLayerVisibilityMessage(inMsg))
+	{
+		return;
+	}
 	else
 	{
 		SetTabFilterMode(inParam);
@@ -532,6 +800,8 @@ void			WED_MapPane::FromPrefs(IDocPrefs * prefs)
 	mStructureLayer->SetRealLinesShowing(	 prefs->ReadIntPref("map/real_lines_vis",mStructureLayer->GetRealLinesShowing() ? 1 : 0) != 0);
 	mStructureLayer->SetVerticesShowing(	 prefs->ReadIntPref("map/vertices_vis",	 mStructureLayer->GetVerticesShowing() ? 1 : 0) != 0);
 	mStructureLayer->SetRampLabelsShowing(	 prefs->ReadIntPref("map/ramp_labels_vis",mStructureLayer->GetRampLabelsShowing() ? 1 : 0) != 0);
+	mLayerVisibilityMask = prefs->ReadIntPref("map/layer_visibility_mask", layer_vis_All) & layer_vis_All;
+	SetTabFilterMode(mTabFilterMode);
 
 	double w,s,e,n;
 	mMap->GetMapVisibleBounds(w,s,e,n);
@@ -605,6 +875,7 @@ void			WED_MapPane::ToPrefs(IDocPrefs * prefs)
 	prefs->WriteIntPref("map/real_lines_vis",mStructureLayer->GetRealLinesShowing() ? 1 : 0);
 	prefs->WriteIntPref("map/vertices_vis",mStructureLayer->GetVerticesShowing() ? 1 : 0);
 	prefs->WriteIntPref("map/ramp_labels_vis",mStructureLayer->GetRampLabelsShowing() ? 1 : 0);
+	prefs->WriteIntPref("map/layer_visibility_mask",mLayerVisibilityMask);
 
 	double w,s,e,n;
 	mMap->GetMapVisibleBounds(w,s,e,n);
@@ -818,11 +1089,106 @@ void unhide_persistent(MapFilter_t& hide_list, const MapFilter_t& to_unhide)
 	}
 }
 
+static void hide_persistent(MapFilter_t& hide_list, const FilterSpec& to_hide)
+{
+	for (MapFilter_t::const_iterator it = hide_list.begin(); it != hide_list.end(); ++it)
+		if (*it == to_hide)
+			return;
+	hide_list.push_back(to_hide);
+}
+
+static void hide_persistent(MapFilter_t& hide_list, const MapFilter_t& to_hide)
+{
+	for (MapFilter_t::const_iterator it = to_hide.begin(); it != to_hide.end(); ++it)
+		hide_persistent(hide_list, *it);
+}
+
+static void apply_layer_visibility_mask(
+	MapFilter_t& hide_list,
+	int layer_visibility_mask,
+	WED_ATCLayer * atc_layer,
+	WED_BoundaryLayer * bdy_layer)
+{
+	if ((layer_visibility_mask & layer_vis_Terrain) == 0)
+	{
+		hide_persistent(hide_list, WED_DrapedOrthophoto::sClass);
+	}
+
+	if ((layer_visibility_mask & layer_vis_Pavement) == 0)
+	{
+		hide_persistent(hide_list, WED_PolygonPlacement::sClass);
+		hide_persistent(hide_list, WED_Helipad::sClass);
+		hide_persistent(hide_list, WED_Runway::sClass);
+		hide_persistent(hide_list, WED_Taxiway::sClass);
+		hide_persistent(hide_list, WED_Sealane::sClass);
+	}
+
+	if ((layer_visibility_mask & layer_vis_ATC) == 0)
+	{
+		hide_persistent(hide_list, WED_RampPosition::sClass);
+		hide_persistent(hide_list, WED_TaxiRoute::sClass);
+		hide_persistent(hide_list, WED_TaxiRouteNode::sClass);
+		hide_persistent(hide_list, WED_ATCFrequency::sClass);
+		hide_persistent(hide_list, WED_ATCFlow::sClass);
+		hide_persistent(hide_list, WED_ATCTimeRule::sClass);
+		hide_persistent(hide_list, WED_ATCWindRule::sClass);
+		hide_persistent(hide_list, WED_ATCRunwayUse::sClass);
+		hide_persistent(hide_list, WED_TruckDestination::sClass);
+		hide_persistent(hide_list, WED_TruckParkingLocation::sClass);
+		atc_layer->SetVisible(false);
+	}
+
+	if ((layer_visibility_mask & layer_vis_Markings) == 0)
+	{
+		hide_persistent(hide_list, WED_AirportSign::sClass);
+		hide_persistent(hide_list, WED_LightFixture::sClass);
+		hide_persistent(hide_list, WED_LinePlacement::sClass);
+		hide_persistent(hide_list, WED_StringPlacement::sClass);
+		hide_persistent(hide_list, k_show_taxiline_chain);
+		hide_persistent(hide_list, k_show_taxiline_nodes);
+		hide_persistent(hide_list, WED_Windsock::sClass);
+	}
+
+	if ((layer_visibility_mask & layer_vis_Objects) == 0)
+	{
+		hide_persistent(hide_list, WED_AirportBeacon::sClass);
+		hide_persistent(hide_list, WED_AutogenPlacement::sClass);
+		hide_persistent(hide_list, WED_KeyObjects::sClass);
+		hide_persistent(hide_list, WED_FacadePlacement::sClass);
+		hide_persistent(hide_list, WED_ObjPlacement::sClass);
+		hide_persistent(hide_list, WED_TowerViewpoint::sClass);
+	}
+
+	if ((layer_visibility_mask & layer_vis_Roads) == 0)
+	{
+#if ROAD_EDITING
+		hide_persistent(hide_list, WED_RoadEdge::sClass);
+		hide_persistent(hide_list, WED_RoadNode::sClass);
+#endif
+	}
+
+	if ((layer_visibility_mask & layer_vis_Footprints) == 0)
+	{
+		hide_persistent(hide_list, WED_ForestPlacement::sClass);
+	}
+
+	if ((layer_visibility_mask & layer_vis_Exclusions) == 0)
+	{
+		hide_persistent(hide_list, WED_ExclusionZone::sClass);
+		hide_persistent(hide_list, WED_ExclusionPoly::sClass);
+		hide_persistent(hide_list, WED_AirportBoundary::sClass);
+		hide_persistent(hide_list, k_show_boundary_chain);
+		hide_persistent(hide_list, k_show_boundary_nodes);
+		bdy_layer->SetVisible(false);
+	}
+}
+
 void		WED_MapPane::SetTabFilterMode(int mode)
 {
 	string title;
 	MapFilter_t hide_list, lock_list;
 
+	mTabFilterMode = mode;
 	hide_all_persistents(hide_list);
 	mATCLayer->SetVisible(false);
 	mBdyLayer->SetVisible(false);
@@ -939,6 +1305,7 @@ void		WED_MapPane::SetTabFilterMode(int mode)
 		unhide_persistent(hide_list, WED_DrapedOrthophoto::sClass);
 	}
 
+	apply_layer_visibility_mask(hide_list, mLayerVisibilityMask, mATCLayer, mBdyLayer);
 	mMap->SetFilter(title, hide_list, lock_list);
 }
 //---------------------------------------------------------------------------//
