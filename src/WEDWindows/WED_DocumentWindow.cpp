@@ -434,6 +434,7 @@ int	WED_DocumentWindow::HandleCommand(int command)
 	case wed_Reverse:	WED_DoReverse(mDocument); return 1;
 	case wed_Rotate:	WED_DoRotate(mDocument); return 1;
 	case wed_RenameSelection: return mPropPane ? mPropPane->BeginEditingActiveHierarchyName() : 0;
+	case wed_BatchRename: WED_DoBatchRename(mDocument); return 1;
 	case gui_Duplicate:	WED_DoDuplicate(mDocument, true); return 1;
 	case wed_CopyToAirport:	WED_DoCopyToAirport(mDocument);  mMapPane->ZoomShowSel(2.0); return 1;
 	case wed_Group:		WED_DoGroup(mDocument); return 1;
@@ -579,6 +580,7 @@ int	WED_DocumentWindow::CanHandleCommand(int command, string& ioName, int& ioChe
 	case wed_Reverse:	return WED_CanReverse(mDocument);
 	case wed_Rotate:	return WED_CanRotate(mDocument);
 	case wed_RenameSelection: return mPropPane != NULL;
+	case wed_BatchRename: return WED_CanBatchRename(mDocument);
     case wed_CopyToAirport: return WED_CanCopyToAirport(mDocument, ioName);
 	case gui_Duplicate:	return WED_CanDuplicate(mDocument);
 	case wed_Group:		return WED_CanGroup(mDocument);

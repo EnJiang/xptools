@@ -35,6 +35,9 @@
 #include "MemFileUtils.h"
 #include "PlatformUtils.h"
 
+#include "GUI_Application.h"
+#include "GUI_FormWindow.h"
+
 #include "AptDefs.h"
 #include "XObjDefs.h"
 #include "XESConstants.h"
@@ -87,6 +90,7 @@
 #include "WED_ToolUtils.h"
 #include "WED_UIDefs.h"
 
+#include <iomanip>
 #include <sstream>
 
 #define DOUBLE_PT_DIST (1.0 * MTR_TO_DEG_LAT)
@@ -4085,6 +4089,100 @@ void	WED_DoDuplicate(IResolver * resolver, bool wrap_in_cmd)
 	}
 
 	if (wrap_in_cmd)		wrl->CommitOperation();
+}
+
+namespace {
+
+enum {
+	batch_rename_base = 1,
+	batch_rename_separator,
+	batch_rename_start,
+	batch_rename_padding
+};
+
+class WED_BatchRenameDialog : public GUI_FormWindow {
+public:
+	explicit WED_BatchRenameDialog(IResolver * resolver) :
+		GUI_FormWindow(gApplication, "Batch Rename", 460, 220),
+		mResolver(resolver)
+	{
+		WED_GetSelectionInOrder(mResolver, mSelection);
+
+		string default_base;
+		if (!mSelection.empty())
+			mSelection.front()->GetName(default_base);
+
+		this->Reset("", "Rename", "Cancel", true);
+		this->AddLabel("Rename selected items in hierarchy order.");
+		this->AddFieldNoEdit(100, "Selected", to_string(mSelection.size()));
+		this->AddField(batch_rename_base, "Base Name", default_base);
+		this->AddField(batch_rename_separator, "Separator", " ");
+		this->AddField(batch_rename_start, "Start Number", "1");
+		this->AddField(batch_rename_padding, "Padding", "0");
+	}
+
+	virtual void Submit()
+	{
+		if (mSelection.empty())
+		{
+			this->AsyncDestroy();
+			return;
+		}
+
+		const string base_name = this->GetField(batch_rename_base);
+		const string separator = this->GetField(batch_rename_separator);
+		int start_number = max(0, atoi(this->GetField(batch_rename_start).c_str()));
+		int padding = atoi(this->GetField(batch_rename_padding).c_str());
+		padding = intlim(padding, 0, 9);
+
+		WED_Thing * wrl = WED_GetWorld(mResolver);
+		wrl->StartOperation("Batch Rename");
+
+		for (size_t i = 0; i < mSelection.size(); ++i)
+		{
+			std::ostringstream name_builder;
+			const int sequence_number = start_number + static_cast<int>(i);
+
+			if (!base_name.empty())
+				name_builder << base_name;
+			if (!base_name.empty() && !separator.empty())
+				name_builder << separator;
+			if (padding > 0)
+				name_builder << std::setw(padding) << std::setfill('0');
+			name_builder << sequence_number;
+
+			mSelection[i]->SetName(name_builder.str());
+		}
+
+		wrl->CommitOperation();
+		this->AsyncDestroy();
+	}
+
+	virtual void Cancel()
+	{
+		this->AsyncDestroy();
+	}
+
+private:
+	IResolver * mResolver;
+	vector<WED_Thing *> mSelection;
+};
+
+}
+
+int		WED_CanBatchRename(IResolver * resolver)
+{
+	ISelection * sel = WED_GetSelect(resolver);
+	WED_Thing * wrl = WED_GetWorld(resolver);
+	return sel->GetSelectionCount() > 0 && !sel->IsSelected(wrl);
+}
+
+void	WED_DoBatchRename(IResolver * resolver)
+{
+	if (!WED_CanBatchRename(resolver))
+		return;
+
+	new WED_BatchRenameDialog(resolver);
 }
 
 int WED_CanCopyToAirport(IResolver * resolver, string& aptName)

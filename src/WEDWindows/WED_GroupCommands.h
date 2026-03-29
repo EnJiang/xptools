@@ -111,6 +111,8 @@ int		WED_CanRotate(IResolver * resolver);
 void	WED_DoRotate(IResolver * resolver);
 int		WED_CanDuplicate(IResolver * resolver);
 void	WED_DoDuplicate(IResolver * resolver, bool wrap_in_cmd);
+int		WED_CanBatchRename(IResolver * resolver);
+void	WED_DoBatchRename(IResolver * resolver);
 int     WED_CanCopyToAirport(IResolver * resolver, string& aptName);
 void	WED_DoCopyToAirport(IResolver * resolver);
 

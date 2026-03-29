@@ -116,6 +116,7 @@ static const GUI_MenuItem_t	kEditMenu[] = {
 {	"U&ngroup",				'G'	,	gui_ControlFlag+gui_ShiftFlag,	0,	wed_Ungroup		},
 {	"-",					0,  	0,								0,	0				},
 {	"&Rename",				0,		0,								0,	wed_RenameSelection },
+{	"Batch Rename...",		0,		0,								0,	wed_BatchRename	},
 {	"Spl&it",				'E',	gui_ControlFlag,				0,	wed_Split		},
 {	"A&lign",				'L',	gui_ControlFlag,				0,	wed_Align		},
 {	"Match Bezier Handles",	'B',	gui_ControlFlag+gui_ShiftFlag,	0,	wed_MatchBezierHandles },
@@ -344,7 +345,7 @@ void WED_MakeMenus(GUI_Application * inApp)
 		"Duplicate", kDuplicateMenu, edit_menu, 7);
 
 	GUI_Menu convert_to_menu = inApp->CreateMenu(
-		"Con&vert To", kConvertToMenu, edit_menu, 22);
+		"Con&vert To", kConvertToMenu, edit_menu, 23);
 
 	GUI_Menu  view_menu = inApp->CreateMenu(
 		"&View", kViewMenu, inApp->GetMenuBar(), 0);

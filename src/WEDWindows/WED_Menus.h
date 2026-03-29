@@ -76,6 +76,7 @@ enum {
 	wed_Reverse,
 	wed_Rotate,
 	wed_RenameSelection,
+	wed_BatchRename,
 	wed_MoveFirst,
 	wed_MovePrev,
 	wed_MoveNext,

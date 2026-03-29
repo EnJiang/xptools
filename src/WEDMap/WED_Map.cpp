@@ -117,6 +117,7 @@ static vector<GUI_MenuItem_t> BuildMapContextMenu(
 	static const MapContextCommandSpec kSpecs[] = {
 		{ "Center Viewport", wed_ZoomSelection },
 		{ "Duplicate In Place", gui_Duplicate },
+		{ "Batch Rename...", wed_BatchRename },
 		{ "Copy into Current Airport", wed_CopyToAirport },
 		{ "Delete", gui_Clear },
 		{ "-", 0 },

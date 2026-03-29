@@ -100,6 +100,7 @@ static vector<GUI_MenuItem_t> BuildHierarchyContextMenu(
 	static const HierarchyContextCommandSpec kSpecs[] = {
 		{ "Center Viewport", wed_ZoomSelection },
 		{ "Duplicate In Place", gui_Duplicate },
+		{ "Batch Rename...", wed_BatchRename },
 		{ "Copy into Current Airport", wed_CopyToAirport },
 		{ "Delete", gui_Clear },
 		{ "-", 0 },
