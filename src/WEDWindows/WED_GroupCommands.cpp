@@ -968,6 +968,56 @@ void	WED_DoSelectChildren(IResolver * resolver)
 	op->CommitOperation();
 }
 
+static void CollectDescendantsRecursive(WED_Thing * thing, set<WED_Thing *>& out_descendants)
+{
+	const int child_count = thing->CountChildren();
+	for (int i = 0; i < child_count; ++i)
+	{
+		WED_Thing * child = thing->GetNthChild(i);
+		out_descendants.insert(child);
+		CollectDescendantsRecursive(child, out_descendants);
+	}
+}
+
+int		WED_CanSelectDescendants(IResolver * resolver)
+{
+	vector<WED_Thing *> things;
+	ISelection * sel = WED_GetSelect(resolver);
+	sel->IterateSelectionOr(Iterate_CollectThings, &things);
+	for (vector<WED_Thing *>::iterator it = things.begin(); it != things.end(); ++it)
+	{
+		WED_Thing * thing = *it;
+		if (thing && WED_IsFolder(thing) && thing->CountChildren() > 0)
+			return 1;
+	}
+	return 0;
+}
+
+void	WED_DoSelectDescendants(IResolver * resolver)
+{
+	vector<WED_Thing *> things;
+	ISelection * sel = WED_GetSelect(resolver);
+	IOperation * op = dynamic_cast<IOperation *>(sel);
+	sel->IterateSelectionOr(Iterate_CollectThings, &things);
+	if (things.empty() || !op) return;
+
+	set<WED_Thing *> descendants;
+	for (vector<WED_Thing *>::iterator it = things.begin(); it != things.end(); ++it)
+	{
+		WED_Thing * thing = *it;
+		if (thing && WED_IsFolder(thing))
+			CollectDescendantsRecursive(thing, descendants);
+	}
+
+	if (descendants.empty())
+		return;
+
+	op->StartOperation("Select Descendants");
+	sel->Clear();
+	sel->Insert(set<ISelectable *>(descendants.begin(), descendants.end()));
+	op->CommitOperation();
+}
+
 int		WED_CanSelectVertices(IResolver * resolver)
 {
 	// we can select vertices if all sel items are of gis type polygon or point seq

@@ -148,7 +148,8 @@ static vector<GUI_MenuItem_t> BuildMapContextMenu(
 		{ "Convert To Shape Points", wed_ConvertToShape },
 		{ "-", 0 },
 		{ "Select Parent", wed_SelectParent },
-		{ "Select Children", wed_SelectChild },
+		{ "Select Children (Direct)", wed_SelectChild },
+		{ "Select Children (All)", wed_SelectDescendants },
 		{ "Select Vertices", wed_SelectVertex },
 		{ "Select Connected", wed_SelectConnected },
 	};

@@ -129,6 +129,12 @@ static vector<GUI_MenuItem_t> BuildHierarchyContextMenu(
 		{ "Convert To Object String", wed_ConvertToString },
 		{ "Convert To Forest Points", wed_ConvertToForest },
 		{ "Convert To Shape Points", wed_ConvertToShape },
+		{ "-", 0 },
+		{ "Select Parent", wed_SelectParent },
+		{ "Select Children (Direct)", wed_SelectChild },
+		{ "Select Children (All)", wed_SelectDescendants },
+		{ "Select Vertices", wed_SelectVertex },
+		{ "Select Connected", wed_SelectConnected },
 	};
 
 	labels.clear();

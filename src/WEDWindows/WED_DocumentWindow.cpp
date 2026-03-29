@@ -472,6 +472,7 @@ int	WED_DocumentWindow::HandleCommand(int command)
 	case gui_SelectNone:	WED_DoSelectNone(mDocument);		return 1;
 	case wed_SelectParent:	WED_DoSelectParent(mDocument);		return 1;
 	case wed_SelectChild:	WED_DoSelectChildren(mDocument);	return 1;
+	case wed_SelectDescendants: WED_DoSelectDescendants(mDocument); return 1;
 	case wed_SelectVertex:	WED_DoSelectVertices(mDocument);	return 1;
 	case wed_SelectPoly:	WED_DoSelectPolygon(mDocument);	return 1;
 	case wed_SelectConnected:WED_DoSelectConnected(mDocument);	return 1;
@@ -618,6 +619,7 @@ int	WED_DocumentWindow::CanHandleCommand(int command, string& ioName, int& ioChe
 	case gui_SelectNone:	return WED_CanSelectNone(mDocument);
 	case wed_SelectParent:	return WED_CanSelectParent(mDocument);
 	case wed_SelectChild:	return WED_CanSelectChildren(mDocument);
+	case wed_SelectDescendants: return WED_CanSelectDescendants(mDocument);
 	case wed_SelectVertex:	return WED_CanSelectVertices(mDocument);
 	case wed_SelectPoly:	return WED_CanSelectPolygon(mDocument);
 	case wed_SelectConnected:	return WED_CanSelectConnected(mDocument);

@@ -122,6 +122,8 @@ int		WED_CanSelectParent(IResolver * resolver);
 void	WED_DoSelectParent(IResolver * resolver);
 int		WED_CanSelectChildren(IResolver * resolver);
 void	WED_DoSelectChildren(IResolver * resolver);
+int		WED_CanSelectDescendants(IResolver * resolver);
+void	WED_DoSelectDescendants(IResolver * resolver);
 int		WED_CanSelectVertices(IResolver * resolver);
 void	WED_DoSelectVertices(IResolver * resolver);
 int		WED_CanSelectPolygon(IResolver * resolver);

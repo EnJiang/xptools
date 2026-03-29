@@ -135,6 +135,7 @@ enum {
 	// Select Menu
 	wed_SelectParent,
 	wed_SelectChild,
+	wed_SelectDescendants,
 	wed_SelectVertex,
 	wed_SelectPoly,
 	wed_SelectConnected,
