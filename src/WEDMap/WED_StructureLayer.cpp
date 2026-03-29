@@ -393,7 +393,8 @@ bool		WED_StructureLayer::DrawEntityStructure		(bool inCurrent, IGISEntity * ent
 						ramp->GetName(ramp_name);
 						if (!ramp_name.empty())
 						{
-							GUI_FontDraw(g, font_UI_Small, colorf, l.x() + 8.0, l.y() + 10.0, ramp_name.c_str(), align_Left);
+							static const float ramp_label_color[4] = { 1.0f, 0.95f, 0.0f, 1.0f };
+							GUI_FontDraw(g, font_UI_Basic, ramp_label_color, l.x() + 10.0f, l.y() + 12.0f, ramp_name.c_str(), align_Left);
 						}
 					}
 				}
