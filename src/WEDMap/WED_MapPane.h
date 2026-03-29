@@ -52,6 +52,7 @@ class	WED_TerrainLayer;
 class	WED_CreatePointTool;
 class	WED_CreatePolygonTool;
 class	WED_CreateEdgeTool;
+class	WED_MarqueeTool;
 class	IResolver;
 class	IDocPrefs;
 class	WED_Archive;
@@ -134,6 +135,7 @@ private:
 	WED_CreatePolygonTool * mLinTool;
 	WED_CreatePolygonTool * mAgsTool;
 	WED_CreatePolygonTool * mPolTool;
+	WED_MarqueeTool *		mMarqueeTool;
 #if ROAD_EDITING
 	WED_CreateEdgeTool    * mNetTool;
 #endif

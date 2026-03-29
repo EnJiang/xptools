@@ -51,6 +51,7 @@ public:
 	// CONTROL HANDLE INTERFACE:
 	virtual		void	BeginEdit(void);
 	virtual		void	EndEdit(void);
+			bool	PickEntityAtPixel(int x, int y, IGISEntity *& out_entity);
 
 	virtual		int				CountEntities(void) const;
 	virtual		intptr_t		GetNthEntityID(int n) const;

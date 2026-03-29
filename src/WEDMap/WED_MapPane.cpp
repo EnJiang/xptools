@@ -222,7 +222,7 @@ WED_MapPane::WED_MapPane(GUI_Commander * cmdr, double map_bounds[4], IResolver *
 	mTools.push_back(					new WED_CreateLineTool("Sealane", mMap, mMap, resolver, archive, create_Sealane));
 
 	mTools.push_back(					new WED_VertexTool("Vertex",mMap, mMap, resolver, 1));
-	mTools.push_back(					new WED_MarqueeTool("Marquee",mMap, mMap, resolver));
+	mTools.push_back(mMarqueeTool =	new WED_MarqueeTool("Marquee",mMap, mMap, resolver));
 
 	Assert(mTools.size() == 2 * TOOLICON_ROWS);
 
@@ -292,6 +292,7 @@ WED_MapPane::WED_MapPane(GUI_Commander * cmdr, double map_bounds[4], IResolver *
 	map_scroller->SetContent(mMap);
 
 	mMap->SetMapLogicalBounds(map_bounds[0], map_bounds[1], map_bounds[2], map_bounds[3]);
+	mMap->SetContextMenuPicker(mMarqueeTool);
 
 	mMap->ZoomShowAll();
 

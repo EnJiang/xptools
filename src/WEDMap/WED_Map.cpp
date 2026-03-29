@@ -24,6 +24,7 @@
 #include "WED_Map.h"
 #include "WED_MapLayer.h"
 #include "WED_MapToolNew.h"
+#include "WED_MarqueeTool.h"
 #include "WED_ToolUtils.h"
 #include "WED_Messages.h"
 #include "WED_Globals.h"
@@ -35,6 +36,7 @@
 #include "XESConstants.h"
 #include "IGIS.h"
 #include "ISelection.h"
+#include "IOperation.h"
 #include "IResolver.h"
 #include "GISUtils.h"
 #include "MathUtils.h"
@@ -149,7 +151,7 @@ static bool IsContextMenuClick(int start_x, int start_y, int end_x, int end_y)
 
 }
 
-WED_Map::WED_Map(IResolver * in_resolver, GUI_Commander * cmdr) : GUI_Commander(cmdr), mResolver(in_resolver), mTool(NULL), mClickLayer(NULL),
+WED_Map::WED_Map(IResolver * in_resolver, GUI_Commander * cmdr) : GUI_Commander(cmdr), mResolver(in_resolver), mTool(NULL), mContextMenuPicker(NULL), mClickLayer(NULL),
 					mIsDownCount(0), mIsDownExtraCount(0), mPanLightweightActive(false)
 {
 		mContextMenuStartX = 0;
@@ -199,6 +201,11 @@ void		WED_Map::AddLayer(WED_MapLayer * layer)
 	mLayers.push_back(layer);
 }
 
+void		WED_Map::SetContextMenuPicker(WED_MarqueeTool * picker)
+{
+	mContextMenuPicker = picker;
+}
+
 void		WED_Map::SetFilter(const string& filterName, const MapFilter_t& hide_filter, const MapFilter_t& lock_filter)
 {
 	mFilterName = filterName;
@@ -206,6 +213,32 @@ void		WED_Map::SetFilter(const string& filterName, const MapFilter_t& hide_filte
 	mLockFilter = lock_filter;
 
 	Refresh();
+}
+
+bool		WED_Map::RetargetContextMenuSelection(int x, int y)
+{
+	if (!mContextMenuPicker)
+		return false;
+
+	ISelection * sel = GetSel();
+	if (!sel)
+		return false;
+
+	IGISEntity * hit_entity = NULL;
+	if (!mContextMenuPicker->PickEntityAtPixel(x, y, hit_entity) || !hit_entity)
+		return false;
+
+	ISelectable * hit_selectable = dynamic_cast<ISelectable *>(hit_entity);
+	if (!hit_selectable || sel->IsSelected(hit_selectable))
+		return false;
+
+	IOperation * op = dynamic_cast<IOperation *>(sel);
+	if (op)
+		op->StartOperation("Change Selection");
+	sel->Select(hit_selectable);
+	if (op)
+		op->CommitOperation();
+	return true;
 }
 
 
@@ -585,6 +618,7 @@ void		WED_Map::MouseUp  (int x, int y, int button)
 		const bool show_context_menu = IsContextMenuClick(mContextMenuStartX, mContextMenuStartY, x, y);
 		if (show_context_menu)
 		{
+			RetargetContextMenuSelection(x, y);
 			vector<string> labels;
 			vector<GUI_MenuItem_t> items = BuildMapContextMenu(this, labels);
 			int choice = PopupMenuDynamic(items.data(), x, y, button, -1);

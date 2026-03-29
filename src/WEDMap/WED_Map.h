@@ -40,6 +40,7 @@ class	WED_MapToolNew;
 class	IResolver;
 class	IGISEntity;
 class	ISelection;
+class	WED_MarqueeTool;
 
 class	WED_Map : public GUI_Pane, public WED_MapZoomerNew, public GUI_Listener, public GUI_Commander {
 public:
@@ -49,6 +50,7 @@ public:
 
 			void		SetTool(WED_MapToolNew * tool);
 			void		AddLayer(WED_MapLayer * layer);
+			void		SetContextMenuPicker(WED_MarqueeTool * picker);
 	
 			void		SetFilter(const string& name, const MapFilter_t& hide_filter, const MapFilter_t& lock_filter);
 
@@ -74,6 +76,7 @@ private:
 
 			void		DrawVisFor(WED_MapLayer * layer, int current, const Bbox2& bounds, IGISEntity * what, GUI_GraphState * g, ISelection * sel, int depth);
 			void		DrawStrFor(WED_MapLayer * layer, int current, const Bbox2& bounds, IGISEntity * what, bool what_locked, GUI_GraphState * g, ISelection * sel, int depth);
+			bool		RetargetContextMenuSelection(int x, int y);
 
 		IGISEntity *	GetGISBase();
 		ISelection *	GetSel();
@@ -81,6 +84,7 @@ private:
 
 	vector<WED_MapLayer *>			mLayers;
 	WED_MapToolNew *				mTool;
+	WED_MarqueeTool *				mContextMenuPicker;
 	IResolver *						mResolver;
 
 	MapFilter_t						mHideFilter;

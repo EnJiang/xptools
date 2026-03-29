@@ -84,13 +84,12 @@ protected:
 			void				SetCanSelect(int can_select);							// Normally all tool-base tools can select - but sub-classes can turn this off.
 			void				SetDrawAlways(int can_draw_always);						// Normally no drawing when the tool is not selected...but we can set this to draw
 			void				SetControlProvider(IControlHandles * provider);			//		links no matter what.  Used in the TCE because I am lazy.
-
-private:
-
-			void ProcessSelection(
+			void				ProcessSelection(
 								IGISEntity *		entity,
 								Bbox2&				bounds,
 								set<IGISEntity *>&	result);
+
+private:
 									
 			void ProcessSelectionRecursive(
 								IGISEntity *		entity,

@@ -107,6 +107,26 @@ WED_MarqueeTool::~WED_MarqueeTool()
 {
 }
 
+bool	WED_MarqueeTool::PickEntityAtPixel(int x, int y, IGISEntity *& out_entity)
+{
+	out_entity = NULL;
+
+	IGISEntity * ent_base = SAFE_CAST(IGISEntity, WED_GetWorld(GetResolver()));
+	if (!ent_base)
+		return false;
+
+	Bbox2 bounds(
+		GetZoomer()->PixelToLL(Point2(x, y)),
+		GetZoomer()->PixelToLL(Point2(x, y)));
+	set<IGISEntity *> result;
+	ProcessSelection(ent_base, bounds, result);
+	if (result.empty())
+		return false;
+
+	out_entity = *result.begin();
+	return out_entity != NULL;
+}
+
 void	WED_MarqueeTool::BeginEdit(void)
 {
 	ISelection * sel = WED_GetSelect(GetResolver());
