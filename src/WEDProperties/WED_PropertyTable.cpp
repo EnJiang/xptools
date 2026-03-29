@@ -836,6 +836,33 @@ bool	WED_PropertyTable::RevealSelectionInHierarchy(GUI_Table * table, bool cente
 	return true;
 }
 
+int	WED_PropertyTable::GetColumnIndexByName(const string& name) const
+{
+	for (int idx = 0; idx < mColNames.size(); ++idx)
+	{
+		if (mColNames[idx] == name)
+			return idx;
+	}
+	return -1;
+}
+
+int	WED_PropertyTable::FindRowForPrimarySelectionTarget()
+{
+	if (mVertical || mSelOnly)
+		return -1;
+
+	ISelection * selection = WED_GetSelect(mResolver);
+	if (!selection || selection->GetSelectionCount() == 0)
+		return -1;
+
+	WED_Thing * thing = dynamic_cast<WED_Thing *>(selection->GetNthSelection(0));
+	if (!thing)
+		return -1;
+
+	WED_Thing * reveal_target = ResolveVisibleHierarchyThing(thing);
+	return reveal_target ? FindRowForThing(reveal_target) : -1;
+}
+
 
 int		WED_PropertyTable::TabAdvance(
 						int&						io_x,

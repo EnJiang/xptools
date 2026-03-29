@@ -187,6 +187,40 @@ void		GUI_TextTable::SetTextFieldColors(
 	}
 }
 
+bool		GUI_TextTable::BeginEditCell(int cell_x, int cell_y)
+{
+	if (!mContent || !mParent)
+		return false;
+
+	if (HasEdit())
+		TerminateEdit(true, false, true);
+
+	if (!IsFocusedChain())
+		TakeFocus();
+
+	int cell_bounds[4];
+	if (!mParent->CalcCellBounds(cell_x, cell_y, cell_bounds))
+		return false;
+
+	mContent->GetCellContent(cell_x, cell_y, mEditInfo);
+	if (!mEditInfo.can_edit)
+		return false;
+
+	switch (mEditInfo.content_type) {
+	case gui_Cell_EditText:
+	case gui_Cell_TaxiText:
+	case gui_Cell_Integer:
+	case gui_Cell_Double:
+		cell_bounds[0] -= mEditInfo.indent_level * mCellIndent;
+		mClickCellX = cell_x;
+		mClickCellY = cell_y;
+		CreateEdit(cell_bounds);
+		return true;
+	default:
+		return false;
+	}
+}
+
 void	GUI_TextTable::KillEditing(bool save_it)
 {
 	TerminateEdit(save_it, false, true);

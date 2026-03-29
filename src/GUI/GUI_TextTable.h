@@ -337,6 +337,7 @@ public:
 								float hilite_color[4],
 								float bkgnd_color[4],
 								float box_color[4]);
+			bool		BeginEditCell(int cell_x, int cell_y);
 
 	//Cell Drawing Method, takes the bounds of the cell, the x and y positions of the cell and the graph state
 	virtual	void		CellDraw	 (int cell_bounds[4], int cell_x, int cell_y, GUI_GraphState * inState);

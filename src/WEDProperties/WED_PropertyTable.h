@@ -186,6 +186,8 @@ public:
 
 	void	SetFilter(const string& filter);
 	bool	RevealSelectionInHierarchy(GUI_Table * table, bool center_if_needed);
+	int		GetColumnIndexByName(const string& name) const;
+	int		FindRowForPrimarySelectionTarget();
 
 private:
 

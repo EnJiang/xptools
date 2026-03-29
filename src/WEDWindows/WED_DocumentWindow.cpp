@@ -329,6 +329,8 @@ WED_DocumentWindow::~WED_DocumentWindow()
 int	WED_DocumentWindow::HandleKeyPress(uint32_t inKey, int inVK, GUI_KeyFlags inFlags)
 {
 	if ( mMapPane->Map_KeyPress(inKey, inVK, inFlags)) return 1;
+	if ((inFlags & gui_DownFlag) && inVK == GUI_VK_F2 && mPropPane && mPropPane->BeginEditingActiveHierarchyName())
+		return 1;
 	if ((inKey == GUI_KEY_BACK || inKey == GUI_KEY_DELETE ) && (inFlags & gui_DownFlag))
 	if (WED_CanClear(mDocument)) { DispatchHandleCommand(gui_Clear); return 1; }	// run through dispatcher to make sure we call the appropriate hooks!
 	return 0;
@@ -431,6 +433,7 @@ int	WED_DocumentWindow::HandleCommand(int command)
 	case wed_RegularPoly:	WED_DoMakeRegularPoly(mDocument); return 1;
 	case wed_Reverse:	WED_DoReverse(mDocument); return 1;
 	case wed_Rotate:	WED_DoRotate(mDocument); return 1;
+	case wed_RenameSelection: return mPropPane ? mPropPane->BeginEditingActiveHierarchyName() : 0;
 	case gui_Duplicate:	WED_DoDuplicate(mDocument, true); return 1;
 	case wed_CopyToAirport:	WED_DoCopyToAirport(mDocument);  mMapPane->ZoomShowSel(2.0); return 1;
 	case wed_Group:		WED_DoGroup(mDocument); return 1;
@@ -575,6 +578,7 @@ int	WED_DocumentWindow::CanHandleCommand(int command, string& ioName, int& ioChe
 	case wed_RegularPoly:	return WED_CanMakeRegularPoly(mDocument);
 	case wed_Reverse:	return WED_CanReverse(mDocument);
 	case wed_Rotate:	return WED_CanRotate(mDocument);
+	case wed_RenameSelection: return mPropPane != NULL;
     case wed_CopyToAirport: return WED_CanCopyToAirport(mDocument, ioName);
 	case gui_Duplicate:	return WED_CanDuplicate(mDocument);
 	case wed_Group:		return WED_CanGroup(mDocument);

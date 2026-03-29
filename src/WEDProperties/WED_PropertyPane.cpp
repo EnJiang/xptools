@@ -175,6 +175,22 @@ void	WED_PropertyPane::SetClosed(set<int> id)
 	mPropertyTable.SetClosed(id);
 }
 
+bool	WED_PropertyPane::BeginEditingActiveHierarchyName()
+{
+	if (!mIsHierarchy || !mTable)
+		return false;
+
+	if (!RevealSelectionInHierarchy(true))
+		return false;
+
+	const int name_col = mPropertyTable.GetColumnIndexByName("Name");
+	const int row = mPropertyTable.FindRowForPrimarySelectionTarget();
+	if (name_col < 0 || row < 0)
+		return false;
+
+	return mTextTable.BeginEditCell(name_col, row);
+}
+
 bool	WED_PropertyPane::RevealSelectionInHierarchy(bool center_if_needed)
 {
 	if (!mIsHierarchy || !mTable)

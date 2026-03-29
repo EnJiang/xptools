@@ -78,6 +78,7 @@ public:
 	void		FromPrefs(IDocPrefs * prefs,int id);
 
 	void		SetClosed(set<int> id);
+	bool		BeginEditingActiveHierarchyName();
 	bool		RevealSelectionInHierarchy(bool center_if_needed);
 
 	virtual int		MouseMove(int x, int y);
