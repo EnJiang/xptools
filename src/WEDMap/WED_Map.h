@@ -93,6 +93,7 @@ private:
 	int				mY_Orig;
 	int				mIsDownCount;
 	int				mIsDownExtraCount;
+	bool			mPanLightweightActive;
 	
 	GUI_Button *	mTiltButton[4];
 };

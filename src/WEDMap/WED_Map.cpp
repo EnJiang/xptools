@@ -60,8 +60,25 @@
 // display Frames Per Second. Will peg CPU/GPU load at 100%, only useable for diaganostic purposes.
 #define SHOW_FPS 0
 
+namespace {
+
+static double GetCullThresholdPixels(bool lightweight_pan)
+{
+	return lightweight_pan ? 200.0 : TOO_SMALL_TO_GO_IN;
+}
+
+static bool IsPanGesture(int start_x, int start_y, int end_x, int end_y)
+{
+	const int dx = end_x - start_x;
+	const int dy = end_y - start_y;
+	const int kClickRadiusPixels = 4;
+	return dx * dx + dy * dy > kClickRadiusPixels * kClickRadiusPixels;
+}
+
+}
+
 WED_Map::WED_Map(IResolver * in_resolver, GUI_Commander * cmdr) : GUI_Commander(cmdr), mResolver(in_resolver), mTool(NULL), mClickLayer(NULL),
-					mIsDownCount(0), mIsDownExtraCount(0)
+					mIsDownCount(0), mIsDownExtraCount(0), mPanLightweightActive(false)
 {
 		int k_reg[4] = { 0, 0, 4, 2 };
 		int k_act[4] = { 0, 0, 4, 2 };
@@ -135,6 +152,7 @@ void		WED_Map::Draw(GUI_GraphState * state)
 {
 	WED_MapLayer * cur = mTool;
 	bool draw_ent_v, draw_ent_s, wants_sel, wants_clicks;
+	const bool use_lightweight_pan = mPanLightweightActive;
 
 	Bbox2 b_geo;
 	int b[4];
@@ -184,24 +202,30 @@ void		WED_Map::Draw(GUI_GraphState * state)
 		}
 	}
 
-	for (l = mLayers.begin(); l != mLayers.end(); ++l)
-	if((*l)->IsVisible())
+	if (!use_lightweight_pan)
 	{
-		(*l)->GetCaps(draw_ent_v, draw_ent_s, wants_sel, wants_clicks);
-		if (base && draw_ent_s) DrawStrFor(*l, cur == *l, b_geo, base, false, state, wants_sel ? sel : NULL, 0);
-		(*l)->DrawStructure(cur == *l, state);
+		for (l = mLayers.begin(); l != mLayers.end(); ++l)
+		if((*l)->IsVisible())
+		{
+			(*l)->GetCaps(draw_ent_v, draw_ent_s, wants_sel, wants_clicks);
+			if (base && draw_ent_s) DrawStrFor(*l, cur == *l, b_geo, base, false, state, wants_sel ? sel : NULL, 0);
+			(*l)->DrawStructure(cur == *l, state);
+		}
 	}
 
-	for (l = mLayers.begin(); l != mLayers.end(); ++l)
-	if((*l)->IsVisible())
+	if (!use_lightweight_pan)
 	{
-		(*l)->DrawSelected(cur == *l, state);
+		for (l = mLayers.begin(); l != mLayers.end(); ++l)
+		if((*l)->IsVisible())
+		{
+			(*l)->DrawSelected(cur == *l, state);
+		}
 	}
 
 	int x, y;
 	GetMouseLocNow(&x,&y);
 
-	if (mIsDownExtraCount)
+	if (mIsDownExtraCount && !use_lightweight_pan)
 	{
 		state->SetState(0,0,0,1,1,0,0);
 		glColor4f(1,1,1,0.4);
@@ -372,6 +396,7 @@ void		WED_Map::DrawVisFor(WED_MapLayer * layer, int current, const Bbox2& bounds
 {
 	if(!what->Cull(bounds))	return;
 	IGISComposite * c;
+	const double cull_threshold = GetCullThresholdPixels(mPanLightweightActive);
 
 	auto what_ent = dynamic_cast<WED_Entity*>(what);
 	if(!what_ent || !layer->IsVisibleNow(what_ent))	return;
@@ -386,7 +411,7 @@ void		WED_Map::DrawVisFor(WED_MapLayer * layer, int current, const Bbox2& bounds
 		Point2 p2 = this->LLToPixel(on_screen.p2);
 		Vector2 span(p1,p2);
 
-		if(max(span.dx, span.dy) > TOO_SMALL_TO_GO_IN || (p1 == p2) || depth == 0)		// Why p1 == p2?  If the composite contains ONLY ONE POINT it is zero-size.  We'd LOD out.  But if
+		if(max(span.dx, span.dy) > cull_threshold || (p1 == p2) || depth == 0)		// Why p1 == p2?  If the composite contains ONLY ONE POINT it is zero-size.  We'd LOD out.  But if
 		{																				// it contains one thing then we might as well ALWAYS draw it - it's relatively cheap!
 			int t = c->GetNumEntities();												// Depth == 0 means we draw ALL top level objects -- good for airports.
 			for (int n = t-1; n >= 0; --n)
@@ -399,6 +424,7 @@ void		WED_Map::DrawStrFor(WED_MapLayer * layer, int current, const Bbox2& bounds
 {
 	if(!what->Cull(bounds))	return;
 	IGISComposite * c;
+	const double cull_threshold = GetCullThresholdPixels(mPanLightweightActive);
 
 	auto what_ent = dynamic_cast<WED_Entity*>(what);
 	if(!what_ent || !layer->IsVisibleNow(what_ent))	return;
@@ -411,7 +437,7 @@ void		WED_Map::DrawStrFor(WED_MapLayer * layer, int current, const Bbox2& bounds
 		what->GetBounds(gis_Geo, on_screen);
 //		on_screen.expand(GLOBAL_WED_ART_ASSET_FUDGE_FACTOR);
 
-		if(PixelSize(on_screen) > TOO_SMALL_TO_GO_IN || on_screen.is_point() || depth == 0)
+		if(PixelSize(on_screen) > cull_threshold || on_screen.is_point() || depth == 0)
 		{
 			int t = c->GetNumEntities();
 			for (int n = t-1; n >= 0; --n)
@@ -451,6 +477,7 @@ int			WED_Map::MouseDown(int x, int y, int button)
 	{
 		mX = x;
 		mY = y;
+		mPanLightweightActive = false;
 	}
 	// Refresh - map tools don't have access to a GUI_Pane and can't force refreshes.  But they are likely to do per-gesture drawing.
 	Refresh();
@@ -462,6 +489,8 @@ void		WED_Map::MouseDrag(int x, int y, int button)
 	if (button==0 && mClickLayer) mClickLayer->HandleClickDrag(x,y,button, GetModifiersNow());
 	if (button==1)
 	{
+		if (!mPanLightweightActive && IsPanGesture(mX_Orig, mY_Orig, x, y))
+			mPanLightweightActive = true;
 		this->PanPixels(mX, mY, x, y);
 		mX = x;
 		mY = y;
@@ -475,7 +504,11 @@ void		WED_Map::MouseUp  (int x, int y, int button)
 	if (button > 1) --mIsDownExtraCount;
 
 	if (button==0&&mClickLayer)	mClickLayer->HandleClickUp(x,y,button, GetModifiersNow());
-	if (button==1)				this->PanPixels(mX, mY, x, y);
+	if (button==1)
+	{
+		this->PanPixels(mX, mY, x, y);
+		mPanLightweightActive = false;
+	}
 	if(button==0)mClickLayer = NULL;
 	Refresh();
 }
