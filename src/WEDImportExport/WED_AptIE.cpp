@@ -264,7 +264,7 @@ void	AptExportRecursive(WED_Thing * what, AptVector& apts, vector<WED_TaxiRoute 
 	int holes, h;
 
 	WED_Entity * ent = dynamic_cast<WED_Entity *>(what);
-	if (ent && ent->GetHidden()) return;
+	if (ent && ent->GetNoExport()) return;
 
 	const char * cls = what->GetClass();
 

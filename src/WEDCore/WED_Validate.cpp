@@ -358,9 +358,9 @@ static void ValidateOnePointSequence(WED_Thing* who, validation_error_vector& ms
 
 static void ValidatePointSequencesRecursive(WED_Thing * who, validation_error_vector& msgs, WED_Airport * apt)
 {
-	// Don't validate hidden stuff - we won't export it!
+	// Don't validate no-export stuff - it is explicitly excluded from export.
 	WED_Entity * ee = dynamic_cast<WED_Entity *>(who);
-	if(ee && ee->GetHidden())
+	if(ee && ee->GetNoExport())
 		return;
 
 	IGISPointSequence * ps = dynamic_cast<IGISPointSequence *>(who);
@@ -601,9 +601,9 @@ static void ValidateOnePolygon(WED_GISPolygon* who, validation_error_vector& msg
 
 static void ValidateDSFRecursive(WED_Thing * who, WED_LibraryMgr* lib_mgr, validation_error_vector& msgs, WED_Airport * parent_apt)
 {
-	// Don't validate hidden stuff - we won't export it!
+	// Don't validate no-export stuff - it is explicitly excluded from export.
 	auto * ee = dynamic_cast<WED_Entity *>(who);
-	if(ee && ee->GetHidden())
+	if(ee && ee->GetNoExport())
 		return;
 
 	if(who->GetClass() == WED_FacadePlacement::sClass)
@@ -2660,7 +2660,7 @@ static void ValidateOneAirport(WED_Airport* apt, validation_error_vector& msgs, 
 #define COLLECT(type, vector) \
 		if(c == type::sClass) { \
 			auto p = static_cast<type *>(thing); \
-			if(!p->GetHidden())	vector.push_back(p); \
+			if(!p->GetNoExport())	vector.push_back(p); \
 			return; \
 		}
 			 COLLECT(WED_Runway,       runways)
@@ -2705,7 +2705,7 @@ static void ValidateOneAirport(WED_Airport* apt, validation_error_vector& msgs, 
 		else
 		{
 			auto p = dynamic_cast<WED_Entity *>(thing);
-			if(!p || p->GetHidden()) return;         // don't recurse into non-entities, we don't need what could be in there
+			if(!p || p->GetNoExport()) return;         // don't recurse into non-entities or explicitly no-export content
 		}
 		int nc = thing->CountChildren();
 		for (int n = 0; n < nc; ++n)
@@ -2952,8 +2952,8 @@ static void ValidateOneAirport(WED_Airport* apt, validation_error_vector& msgs, 
 		apt_bounds.expand(APT_OVERSIZE_NM / cos(apt_bounds.centroid().y() * DEG_TO_RAD) / 60.0, APT_OVERSIZE_NM / 60.0 );
 		if(!boundaries.empty() && !apt_bounds.contains(bounds))
 		{
-			vector<WED_Thing *> not_hidden;
-			CollectRecursive(apt, back_inserter(not_hidden), ThingNotHidden, [&] (WED_Thing* v)
+			vector<WED_Thing *> exportable_items;
+			CollectRecursive(apt, back_inserter(exportable_items), ThingExportable, [&] (WED_Thing* v)
 					{
 						Bbox2 b;
 						if(auto p = dynamic_cast<WED_GISPolygon *>(v))
@@ -2968,9 +2968,9 @@ static void ValidateOneAirport(WED_Airport* apt, validation_error_vector& msgs, 
 						}
 						return false;
 					});
-			if(not_hidden.size())
+			if(exportable_items.size())
 			{
-				msgs.push_back(validation_error_t("Airport contains scenery far outside the airport boundary.", err_airport_far_outside_boundary, not_hidden, apt));
+				msgs.push_back(validation_error_t("Airport contains scenery far outside the airport boundary.", err_airport_far_outside_boundary, exportable_items, apt));
 				debug_mesh_segment(apt_bounds.left_side(), DBG_LIN_COLOR);
 				debug_mesh_segment(apt_bounds.right_side(), DBG_LIN_COLOR);
 				debug_mesh_segment(apt_bounds.top_side(), DBG_LIN_COLOR);
@@ -2993,7 +2993,7 @@ static void ValidateOneAirport(WED_Airport* apt, validation_error_vector& msgs, 
 //				printf("kosher ortho, has %ld subtex\n", pol->mSubBoxes.size());
 		}
 		if(!orthos_illegal.empty())
-			msgs.push_back(validation_error_t("Only Orthophotos with automatic subtexture selection can be exported to the Gateway. Please hide or remove selected Orthophotos.",
+			msgs.push_back(validation_error_t("Only Orthophotos with automatic subtexture selection can be exported to the Gateway. Mark selected Orthophotos as No Export or remove them.",
 						err_gateway_orthophoto_cannot_be_exported, orthos_illegal, apt));
 		if(mf)
 			ValidateCIFP(runways, sealanes, legal_rwy_oneway, mf, msgs, apt);
@@ -3044,7 +3044,7 @@ validation_result_t	WED_ValidateApt(WED_Document * resolver, WED_MapPane * pane,
 #define COLLECT(type, vector) \
 		if(c == type::sClass) { \
 			auto p = static_cast<type *>(thing); \
-			if(!p->GetHidden())	vector.push_back(p); \
+			if(!p->GetNoExport())	vector.push_back(p); \
 			return; \
 		}
 		COLLECT(WED_RoadEdge,	off_airport_roads)
@@ -3054,7 +3054,7 @@ validation_result_t	WED_ValidateApt(WED_Document * resolver, WED_MapPane * pane,
 		else
 		{
 			auto p = static_cast<WED_Group *>(thing);
-			if(p->GetHidden())
+			if(p->GetNoExport())
 				return;
 			int nc = thing->CountChildren();
 			for (int n = 0; n < nc; ++n)

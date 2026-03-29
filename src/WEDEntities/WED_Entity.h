@@ -35,7 +35,7 @@
 
 	All children of WED_Entities are WED_Entities, that is, we don't have random stuff jammed into the map.
 
-	This class provides the "locked" and "hidden" property provided to anything on the map.
+	This class provides the "locked", "hidden", and "no export" properties provided to anything on the map.
 
 	CACHING
 
@@ -113,6 +113,8 @@ public:
 			int		GetLockedRecursive(void) const;  // covers any parents being locked
 			int		GetLocked(void) const;           // non-recursive
 			int		GetHidden(void) const;
+			int		GetNoExportRecursive(void) const;
+			int		GetNoExport(void) const;
 
 	virtual	bool 	ReadFrom(IOReader * reader);
 	
@@ -134,6 +136,7 @@ private:
 
 	WED_PropBoolText			locked;
 	WED_PropBoolText			hidden;
+	WED_PropBoolText			no_export;
 
 };
 

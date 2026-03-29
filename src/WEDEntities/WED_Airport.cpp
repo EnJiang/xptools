@@ -44,10 +44,11 @@ Property number space (where each NS_ starts from 0)
 R [1] Class
 E [2] Locked
 A [3] Hidden
+N [4] No Export
 L   - NS_AIRPORT
--	  [4-8] Type, Field Elevation, Has ATC, ICAO Id, Scenery ID
+-	  [5-9] Type, Field Elevation, Has ATC, ICAO Id, Scenery ID
 	- NS_META_DATA
-	  [9-n] Meta Data Rows
+	  [10-n] Meta Data Rows
 */
 
 #define NUM_REAL (WED_GISComposite::CountProperties())

@@ -244,8 +244,8 @@ WED_DocumentWindow::WED_DocumentWindow(
 
 	// --------------- Hierarchy  View ---------------
 
-	static const char * titles[] =  { "Locked", "Hidden", "Name", 0 };
-	static int widths[] =			{ 30,		30,		200		};
+	static const char * titles[] =  { "Locked", "Hidden", "No Export", "Name", 0 };
+	static int widths[] =			{ 30,		30,		45,		    200		};
 
 	mPropPane = new WED_PropertyPane(this, inDocument, titles, widths,inDocument->GetArchive(), propPane_Hierarchy, 0);
 	mPropPane->SetParent(mPropSplitter);

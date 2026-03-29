@@ -417,7 +417,7 @@ static WED_DrapedOrthophoto* find_ortho(Polygon2 area, Bbox2 area_box, WED_Thing
 	Bbox2 bnds;
 	auto lmgr = WED_GetLibraryMgr(base->GetArchive()->GetResolver());
 	vector<WED_DrapedOrthophoto*> orthos;
-	CollectRecursive(base, back_inserter(orthos), ThingNotHidden, [&](WED_Thing* pol)->bool {
+	CollectRecursive(base, back_inserter(orthos), ThingExportable, [&](WED_Thing* pol)->bool {
 		static_cast<WED_DrapedOrthophoto*>(pol)->GetBounds(gis_Geo, bnds);
 		return bnds.overlap(area_box);          // fast cull - ortho must at least partially overlap the .ter object as drawn
 		},

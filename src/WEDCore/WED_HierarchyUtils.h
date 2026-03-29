@@ -40,12 +40,14 @@ bool IgnoreVisiblity(WED_Thing* t);
 //Do not use if your root WED_Thing* is an airport, since it could have WED_ATCFlows which
 //are NOT WED_Entitys!
 bool EntityNotHidden(WED_Thing* t);
+bool EntityExportable(WED_Thing* t);
 
 //For cases where T could not have WED_Entity as a parent.
 //Uses dynamic_cast to first test if the thing can be actually checked for its visibilty
 //If it is not secretly a WED_Entity, the function returns true to follow WED's if it "exists" its visible.
 //An ATC Flow should always "exist", therefore, it is true
 bool ThingNotHidden(WED_Thing* t);
+bool ThingExportable(WED_Thing* t);
 //---------------------------------------------------------------------------//
 
 //--Take Predicates------------------------------------------------------------

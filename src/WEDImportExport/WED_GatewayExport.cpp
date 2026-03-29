@@ -151,9 +151,9 @@ static bool has_routes(WED_Airport* who, route_types type)
 	vector<WED_TaxiRoute*> routes;
 
 	if(type == truck_route)
-		CollectRecursive(who, back_inserter(routes), ThingNotHidden, [](WED_Thing* route)->bool { return static_cast<WED_TaxiRoute*>(route)->AllowTrucks(); }, WED_TaxiRoute::sClass);
+		CollectRecursive(who, back_inserter(routes), ThingExportable, [](WED_Thing* route)->bool { return static_cast<WED_TaxiRoute*>(route)->AllowTrucks(); }, WED_TaxiRoute::sClass);
 	else
-		CollectRecursive(who, back_inserter(routes), ThingNotHidden, [](WED_Thing* route)->bool { return static_cast<WED_TaxiRoute*>(route)->AllowAircraft(); }, WED_TaxiRoute::sClass);
+		CollectRecursive(who, back_inserter(routes), ThingExportable, [](WED_Thing* route)->bool { return static_cast<WED_TaxiRoute*>(route)->AllowAircraft(); }, WED_TaxiRoute::sClass);
 
 	return routes.size() > 0;
 }
@@ -162,7 +162,7 @@ static bool has_roads(WED_Airport* who)
 {
 	vector<WED_RoadEdge*> roads;
 
-	CollectRecursive(who, back_inserter(roads), ThingNotHidden, TakeAlways);
+	CollectRecursive(who, back_inserter(roads), ThingExportable, TakeAlways);
 
 	return roads.size() > 0;
 }
@@ -822,7 +822,7 @@ bool Enforce_MetaDataGuiLabel(WED_Airport * apt)
 bool EnforceRecursive_MetaDataGuiLabel(WED_Thing * thing)
 {
 	WED_Entity * ent = dynamic_cast<WED_Entity *>(thing);
-	if (!ent || ent->GetHidden())
+	if (!ent || ent->GetNoExport())
 		return false;
 
 	WED_Airport * apt = dynamic_cast<WED_Airport *>(thing);

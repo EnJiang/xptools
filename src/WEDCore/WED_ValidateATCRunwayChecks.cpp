@@ -198,15 +198,15 @@ static bool AllTaxiRouteNodesInRunway( const RunwayInfo& runway_info,
 	return msgs.size() - original_num_errors == 0 ? true : false;
 }
 
-//True for all hidden and all not WED_Entity
-static bool is_hidden(const WED_Thing* node)
+// True for all no-export items and all not WED_Entity
+static bool is_no_export(const WED_Thing* node)
 {
 	const WED_Entity* ent = dynamic_cast<const WED_Entity*>(node);
 	DebugAssert(ent != NULL);
 
 	if (ent != NULL)
 	{
-		return static_cast<bool>(ent->GetHidden());
+		return static_cast<bool>(ent->GetNoExport());
 	}
 
 	return true;
@@ -221,7 +221,7 @@ static vector<WED_TaxiRoute *> get_all_visible_viewers(const WED_GISPoint* node)
 	for (auto it : viewers)
 	{
 		auto tr = dynamic_cast<WED_TaxiRoute *>(it);
-		if (tr && !tr->GetHidden())
+		if (tr && !tr->GetNoExport())
 			taxi_routes.push_back(tr);
 	}
 	return taxi_routes;

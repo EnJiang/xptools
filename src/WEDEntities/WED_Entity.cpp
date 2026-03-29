@@ -29,6 +29,7 @@ WED_Entity::WED_Entity(WED_Archive * parent, int id) :
 	WED_Thing(parent, id),
 	locked(this,PROP_Name("Locked", XML_Name("hierarchy","locked")),0),
 	hidden(this,PROP_Name("Hidden", XML_Name("hierarchy","hidden")),0),
+	no_export(this,PROP_Name("No Export", XML_Name("hierarchy","no_export")),0),
 	cache_valid_(0)
 {
 }
@@ -64,6 +65,23 @@ int		WED_Entity::GetLocked(void) const
 int		WED_Entity::GetHidden(void) const
 {
 	return hidden.value;
+}
+
+int		WED_Entity::GetNoExportRecursive(void) const
+{
+	if (no_export.value)
+		return 1;
+
+	WED_Entity * e = SAFE_CAST(WED_Entity, this->GetParent());
+	if (e)
+		return e->GetNoExportRecursive();
+	else
+		return 0;
+}
+
+int		WED_Entity::GetNoExport(void) const
+{
+	return no_export.value;
 }
 
 // Read from DB or undo mem - in both cases, mark our cache as invalid...the real core data has probably been

@@ -12,12 +12,31 @@ bool EntityNotHidden(WED_Thing* t)
 	return !static_cast<WED_Entity*>(t)->GetHidden();
 }
 
+bool EntityExportable(WED_Thing* t)
+{
+	DebugAssert(t != NULL);
+	return !static_cast<WED_Entity*>(t)->GetNoExport();
+}
+
 bool ThingNotHidden(WED_Thing * t)
 {
 	WED_Entity* ent = dynamic_cast<WED_Entity*>(t);
 	if (ent != NULL)
 	{
 		return !ent->GetHidden();
+	}
+	else
+	{
+		return true;
+	}
+}
+
+bool ThingExportable(WED_Thing * t)
+{
+	WED_Entity* ent = dynamic_cast<WED_Entity*>(t);
+	if (ent != NULL)
+	{
+		return !ent->GetNoExport();
 	}
 	else
 	{

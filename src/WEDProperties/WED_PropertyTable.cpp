@@ -171,6 +171,15 @@ static bool AnyHidden(WED_Thing * t)
 	return AnyHidden(t->GetParent());
 }
 
+static bool AnyNoExport(WED_Thing * t)
+{
+	if (t == NULL) return false;
+	WED_Entity * e = dynamic_cast<WED_Entity *>(t);
+	if (e == NULL) return false;
+	if (e->GetNoExport()) return true;
+	return AnyNoExport(t->GetParent());
+}
+
 WED_PropertyTable::WED_PropertyTable(
 									GUI_Commander *         cmdr,
 									IResolver *				resolver,
@@ -331,13 +340,14 @@ void	WED_PropertyTable::GetCellContent(
 		the_content.int_val = val.int_val;
 		the_content.bool_val = gui_Bool_Check;
 		the_content.bool_partial = 0;
-		if (mColNames[mVertical ? cell_y : cell_x] == "Locked")	{ the_content.bool_val = gui_Bool_Lock;		if (!the_content.int_val)	the_content.bool_partial = AnyLocked(t); }
-		if (mColNames[mVertical ? cell_y : cell_x] == "Hidden")	{ the_content.bool_val = gui_Bool_Visible;	if (!the_content.int_val)	the_content.bool_partial = AnyHidden(t); }
+		if (mColNames[mVertical ? cell_y : cell_x] == "Locked")		{ the_content.bool_val = gui_Bool_Lock;		if (!the_content.int_val)	the_content.bool_partial = AnyLocked(t); }
+		if (mColNames[mVertical ? cell_y : cell_x] == "Hidden")		{ the_content.bool_val = gui_Bool_Visible;	if (!the_content.int_val)	the_content.bool_partial = AnyHidden(t); }
+		if (mColNames[mVertical ? cell_y : cell_x] == "No Export")	{ the_content.bool_val = gui_Bool_Check;	if (!the_content.int_val)	the_content.bool_partial = AnyNoExport(t); }
 
-		if((mColNames[mVertical ? cell_y : cell_x] == "Locked" || mColNames[mVertical ? cell_y : cell_x] == "Hidden") &&
+		if((mColNames[mVertical ? cell_y : cell_x] == "Locked" || mColNames[mVertical ? cell_y : cell_x] == "Hidden" || mColNames[mVertical ? cell_y : cell_x] == "No Export") &&
 			SAFE_CAST(WED_GISPolygon,my_parent))
 			{
-				the_content.bool_partial = 1;    // don't give the impression the inner/outer rings of polygons could/should be hidden or locked, ever
+				the_content.bool_partial = 1;    // don't give the impression the inner/outer rings of polygons could/should be hidden, locked, or no-export, ever
 				return;
 			}
 		break;
@@ -497,10 +507,10 @@ void	WED_PropertyTable::AcceptEdit(
 		case prop_Bool:
 			val.prop_kind = prop_Bool;
 			val.int_val = content.int_val;
-			if((mColNames[mVertical ? cell_y : cell_x] == "Locked" || mColNames[mVertical ? cell_y : cell_x] == "Hidden") &&
+			if((mColNames[mVertical ? cell_y : cell_x] == "Locked" || mColNames[mVertical ? cell_y : cell_x] == "Hidden" || mColNames[mVertical ? cell_y : cell_x] == "No Export") &&
 				 SAFE_CAST(WED_GISPolygon,t->GetParent()) )
 				{
-					val.int_val = 0;    // don't let anyone ever set polygon inner/outer rings to be hidden or locked.
+					val.int_val = 0;    // don't let anyone ever set polygon inner/outer rings to be hidden, locked, or no-export.
 				}
 			break;
 		case prop_Enum:

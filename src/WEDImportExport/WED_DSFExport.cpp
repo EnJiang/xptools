@@ -1203,7 +1203,7 @@ static int	DSF_ExportTileRecursive(
 						DSF_export_info_t *			export_info )
 {
 	WED_Entity * ent = static_cast<WED_Entity *>(what);
-	if (!ent || ent->GetHidden())
+	if (!ent || ent->GetNoExport())
 		return 0;
 
 	IGISEntity * e = dynamic_cast<IGISEntity *>(what);
@@ -1677,7 +1677,7 @@ static int	DSF_ExportTileRecursive(
 						double ter_msl = 0;
 						fst->GetBounds(gis_Geo, bnds);
 						vector<WED_TerPlacement*> ters;
-						CollectRecursive(WED_GetWorld(resolver), back_inserter(ters), EntityNotHidden, TakeAlways, WED_TerPlacement::sClass);
+						CollectRecursive(WED_GetWorld(resolver), back_inserter(ters), EntityExportable, TakeAlways, WED_TerPlacement::sClass);
 
 						const dem_info_t* dem_info = nullptr;
 						for(auto t : ters)
@@ -2267,7 +2267,7 @@ int DSF_Export(WED_Thing * base, IResolver * resolver, const string& package, se
 
 int DSF_ExportAirportOverlay(IResolver * resolver, WED_Airport  * apt, const string& package, set<WED_Thing *>& problem_children)
 {
-	if(apt->GetHidden())
+	if(apt->GetNoExport())
 		return 1;
 	string icao;
 	apt->GetICAO(icao);
